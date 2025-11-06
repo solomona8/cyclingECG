@@ -18,6 +18,15 @@ def root():
 def health():
     return {"status": "ok"}
 
+# in app/main.py near the top, after app = FastAPI(...)
+@app.get("/")
+def root():
+    return {"ok": True, "docs": "/docs"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 API_KEY = os.environ.get("API_KEY", "changeme")
 
 class FiltersApplied(BaseModel):
