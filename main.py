@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Tuple, Dict, Any
 from datetime import datetime
 import os
+from fastapi import UploadFile, File, Form
+import io, csv
 
 app = FastAPI(title="ECG Analyzer", version="1.0.0")
 
@@ -93,6 +95,89 @@ def analyze_ecg(payload: ECGRequest, authorization: Optional[str] = Header(None)
     resp = {"recording_id": payload.recording_id, **result}
     STORE[payload.recording_id] = resp
     return resp
+
+@app.post("/v1/ecg/upload_csv")
+async def upload_csv(
+    file: UploadFile = File(...),
+    sampling_rate_hz: float = Form(256),
+    units: str = Form("uV"),
+    lead: str = Form("I"),
+    recording_id: str = Form("csv_upload"),
+    start_timestamp_utc: str = Form(None),  # optional
+    authorization: str | None = Header(None),
+):
+    _check_auth(authorization)
+
+    if units not in {"uV", "mV", "LSB"}:
+        raise HTTPException(status_code=400, detail="units must be one of uV, mV, LSB")
+    if lead != "I":
+        raise HTTPException(status_code=400, detail="lead must be 'I' for Apple Watch")
+
+    contents = await file.read()
+    text = contents.decode("utf-8", errors="ignore")
+    reader = csv.reader(io.StringIO(text))
+
+    rows = [r for r in reader if any(cell.strip() for cell in r)]
+    if not rows:
+        raise HTTPException(status_code=400, detail="CSV appears empty")
+
+    header_like = any(not _is_float(c) for c in rows[0])
+    data_rows = rows[1:] if header_like else rows
+
+    col_idx = _choose_numeric_column(data_rows)
+    if col_idx is None:
+        raise HTTPException(status_code=400, detail="No numeric column found in CSV")
+
+    samples = []
+    for r in data_rows:
+        try:
+            samples.append(float(r[col_idx]))
+        except Exception:
+            continue
+
+    if len(samples) < 30:
+        raise HTTPException(status_code=400, detail=f"Not enough numeric samples ({len(samples)})")
+
+    features = extract_features(samples, sampling_rate_hz)
+
+    summary = {
+        "rhythm": features["rhythm_label"],
+        "rhythm_confidence": features["confidence"],
+        "mean_hr_bpm": features["mean_hr_bpm"],
+        "min_hr_bpm": features["min_hr_bpm"],
+        "max_hr_bpm": features["max_hr_bpm"],
+        "signal_quality": features["signal_quality"],
+    }
+
+    response = {
+        "recording_id": recording_id,
+        "summary": summary,
+        "beats": {
+            "r_peaks_ms": features["r_peaks_ms"],
+            "rr_ms": features["rr_ms"],
+            "artifact_mask": features["artifact_mask"],
+        },
+        "hrv_time": {
+            "sdnn_ms": features["sdnn_ms"],
+            "rmssd_ms": features["rmssd_ms"]
+        },
+        "intervals": {
+            "qrs_ms": features["qrs_ms"],
+            "qt_ms": features["qt_ms"],
+            "qtc_ms_bazett": features["qtc_ms_bazett"],
+            "uncertainty_ms": features["uncertainty_ms"]
+        },
+        "flags": {
+            "pacemaker_detected": False,
+            "ectopy_burden_pct": features["ectopy_burden_pct"],
+            "st_deviation_flag": False
+        },
+        "version": APP_VERSION
+    }
+
+    STORE[recording_id] = response
+    return response
+
 
 @app.get("/v1/ecg/recordings/{recording_id}")
 def get_ecg(recording_id: str, authorization: Optional[str] = Header(None)):
@@ -224,4 +309,24 @@ def _choose_numeric_column(rows: list[list[str]]) -> int | None:
         if hits > best_hits:
             best_hits, best_col = hits, c
     # require that at least half the rows are numeric in that column
+    return best_col if best_hits >= max(1, len(rows) // 2) else None
+def _is_float(s: str) -> bool:
+    try:
+        float(s)
+        return True
+    except Exception:
+        return False
+
+def _choose_numeric_column(rows: list[list[str]]) -> int | None:
+    if not rows:
+        return None
+    n_cols = max(len(r) for r in rows)
+    best_col, best_hits = None, -1
+    for c in range(n_cols):
+        hits = 0
+        for r in rows:
+            if c < len(r) and _is_float(r[c].strip()):
+                hits += 1
+        if hits > best_hits:
+            best_hits, best_col = hits, c
     return best_col if best_hits >= max(1, len(rows) // 2) else None
