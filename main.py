@@ -101,3 +101,127 @@ def get_ecg(recording_id: str, authorization: Optional[str] = Header(None)):
     if not data:
         raise HTTPException(status_code=404, detail="recording_id not found")
     return data
+# add to your imports at the top of app/main.py
+from fastapi import UploadFile, File, Form
+import io, csv
+
+@app.post("/v1/ecg/upload_csv")
+async def upload_csv(
+    file: UploadFile = File(...),
+    sampling_rate_hz: float = Form(256),
+    units: str = Form("uV"),
+    lead: str = Form("I"),
+    recording_id: str = Form("csv_upload"),
+    start_timestamp_utc: str = Form(None),  # optional
+    authorization: str | None = Header(None),
+):
+    """
+    Accept a CSV file and analyze it.
+    - CSV may have a header.
+    - If multiple columns, the first numeric-looking column is used.
+    - Form fields let you pass metadata alongside the file.
+    """
+    _check_auth(authorization)
+
+    if units not in {"uV", "mV", "LSB"}:
+        raise HTTPException(status_code=400, detail="units must be one of uV, mV, LSB")
+    if lead != "I":
+        raise HTTPException(status_code=400, detail="lead must be 'I' for Apple Watch")
+
+    # Read CSV in memory
+    contents = await file.read()
+    text = contents.decode("utf-8", errors="ignore")
+    reader = csv.reader(io.StringIO(text))
+
+    # Parse rows -> choose the first numeric column
+    rows = list(reader)
+    # remove empty rows
+    rows = [r for r in rows if any(cell.strip() for cell in r)]
+    if not rows:
+        raise HTTPException(status_code=400, detail="CSV appears empty")
+
+    # If header suspected, keep both; detection is simple
+    header_like = any(not _is_float(c) for c in rows[0])
+    data_rows = rows[1:] if header_like else rows
+
+    # Pick the first column that looks numeric across most rows
+    col_idx = _choose_numeric_column(data_rows)
+    if col_idx is None:
+        raise HTTPException(status_code=400, detail="No numeric column found in CSV")
+
+    # Extract numeric samples
+    samples = []
+    for r in data_rows:
+        try:
+            samples.append(float(r[col_idx]))
+        except Exception:
+            # skip non-numeric rows
+            continue
+
+    if len(samples) < 30:
+        raise HTTPException(status_code=400, detail=f"Not enough numeric samples ({len(samples)})")
+
+    # Run the same feature extraction
+    features = extract_features(samples, sampling_rate_hz)
+
+    summary = {
+        "rhythm": features["rhythm_label"],
+        "rhythm_confidence": features["confidence"],
+        "mean_hr_bpm": features["mean_hr_bpm"],
+        "min_hr_bpm": features["min_hr_bpm"],
+        "max_hr_bpm": features["max_hr_bpm"],
+        "signal_quality": features["signal_quality"],
+    }
+
+    response = {
+        "recording_id": recording_id,
+        "summary": summary,
+        "beats": {
+            "r_peaks_ms": features["r_peaks_ms"],
+            "rr_ms": features["rr_ms"],
+            "artifact_mask": features["artifact_mask"],
+        },
+        "hrv_time": {
+            "sdnn_ms": features["sdnn_ms"],
+            "rmssd_ms": features["rmssd_ms"]
+        },
+        "intervals": {
+            "qrs_ms": features["qrs_ms"],
+            "qt_ms": features["qt_ms"],
+            "qtc_ms_bazett": features["qtc_ms_bazett"],
+            "uncertainty_ms": features["uncertainty_ms"]
+        },
+        "flags": {
+            "pacemaker_detected": False,
+            "ectopy_burden_pct": features["ectopy_burden_pct"],
+            "st_deviation_flag": False
+        },
+        "version": APP_VERSION
+    }
+
+    STORE[recording_id] = response
+    return response
+
+
+# ---- helper functions (add near the bottom or above) ----
+def _is_float(s: str) -> bool:
+    try:
+        float(s)
+        return True
+    except Exception:
+        return False
+
+def _choose_numeric_column(rows: list[list[str]]) -> int | None:
+    if not rows:
+        return None
+    n_cols = max(len(r) for r in rows)
+    best_col, best_hits = None, -1
+    for c in range(n_cols):
+        hits = 0
+        for r in rows:
+            if c < len(r) and _is_float(r[c].strip()):
+                hits += 1
+        if hits > best_hits:
+            best_hits, best_col = hits, c
+    # require that at least half the rows are numeric in that column
+    return best_col if best_hits >= max(1, len(rows) // 2) else None
