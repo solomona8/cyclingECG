@@ -1,3 +1,5 @@
+from fastapi import Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import FastAPI, Header, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
@@ -54,6 +56,18 @@ class ECGRequest(BaseModel):
     user: Optional[UserInfo] = None
     symptoms: Optional[List[str]] = None
     analyzer_version: Optional[str] = None
+
+auth_scheme = HTTPBearer(auto_error=False)
+
+def _require_bearer(credentials: HTTPAuthorizationCredentials = Security(auth_scheme)):
+    # If API_KEY is unset, auth is disabled (handy for quick testing)
+    API_KEY = os.environ.get("API_KEY")
+    if not API_KEY:
+        return
+    if not credentials or (credentials.scheme or "").lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Unauthorized: missing Bearer token")
+    if credentials.credentials != API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized: bad token")
 
 def fake_analysis(samples: List[float], fs: float) -> Dict[str, Any]:
     n = len(samples)
@@ -189,13 +203,18 @@ async def upload_csv(
     STORE[recording_id] = response
     return response
 
-@app.get("/v1/ecg/recordings/{recording_id}")
-def get_ecg(recording_id: str, authorization: Optional[str] = Header(None)):
-    _check_auth(authorization)
-    data = STORE.get(recording_id)
-    if not data:
-        raise HTTPException(status_code=404, detail="recording_id not found")
-    return data
+@app.post("/v1/ecg/upload_csv")
+async def upload_csv(
+    file: UploadFile = File(...),
+    sampling_rate_hz: float = Form(256),
+    units: str = Form("uV"),
+    lead: str = Form("I"),
+    recording_id: str = Form("csv_upload"),
+    start_timestamp_utc: str = Form(None),
+    credentials: HTTPAuthorizationCredentials = Security(auth_scheme)
+):
+    _require_bearer(credentials)
+    ...
 
 # ------- helpers for CSV parsing -------
 def _is_float(s: str) -> bool:
