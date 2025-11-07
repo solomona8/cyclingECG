@@ -1,16 +1,19 @@
-from fastapi import Security
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi import FastAPI, Header, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import os, io, csv
 
-# If you have app/feature_extractor.py in your repo, import the extractor:
-from app.feature_extractor import extract_features
+# Optional: use your own extractor if available; otherwise we fall back to a simple analyzer
+try:
+    from app.feature_extractor import extract_features as _extract_features_real
+except Exception:
+    _extract_features_real = None  # we'll use a stub fallback below
 
 app = FastAPI(title="ECG Analyzer", version="1.0.0")
 
+# ---- public routes (no auth) ----
 @app.get("/")
 def root():
     return {"ok": True, "docs": "/docs"}
@@ -19,7 +22,8 @@ def root():
 def health():
     return {"status": "ok"}
 
-API_KEY = os.environ.get("API_KEY", "changeme")
+# ---- config & models ----
+API_KEY = os.environ.get("API_KEY")  # no default; auth is disabled if unset
 
 class FiltersApplied(BaseModel):
     highpass_hz: Optional[float] = None
@@ -57,11 +61,11 @@ class ECGRequest(BaseModel):
     symptoms: Optional[List[str]] = None
     analyzer_version: Optional[str] = None
 
+# ---- auth (works with the padlock in /docs) ----
 auth_scheme = HTTPBearer(auto_error=False)
 
 def _require_bearer(credentials: HTTPAuthorizationCredentials = Security(auth_scheme)):
-    # If API_KEY is unset, auth is disabled (handy for quick testing)
-    API_KEY = os.environ.get("API_KEY")
+    # Auth disabled if API_KEY not set
     if not API_KEY:
         return
     if not credentials or (credentials.scheme or "").lower() != "bearer":
@@ -69,7 +73,8 @@ def _require_bearer(credentials: HTTPAuthorizationCredentials = Security(auth_sc
     if credentials.credentials != API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized: bad token")
 
-def fake_analysis(samples: List[float], fs: float) -> Dict[str, Any]:
+# ---- simple built-in analyzer (fallback) ----
+def _fake_analysis(samples: List[float], fs: float) -> Dict[str, Any]:
     n = len(samples)
     mean = sum(samples) / max(n, 1)
     mean_hr = 72 + int(mean) % 15
@@ -80,33 +85,58 @@ def fake_analysis(samples: List[float], fs: float) -> Dict[str, Any]:
             "mean_hr_bpm": mean_hr,
             "min_hr_bpm": max(40, mean_hr - 8),
             "max_hr_bpm": min(180, mean_hr + 12),
-            "signal_quality": "good" if n > 200 else "moderate"
+            "signal_quality": "good" if n > 200 else "moderate",
         },
         "beats": {
-            "r_peaks_ms": [i * 800 for i in range(1, min(30, n // int(fs)) + 1)],
-            "rr_ms": [800 for _ in range(min(29, n // int(fs) - 1))],
-            "artifact_mask": []
+            "r_peaks_ms": [i * 800 for i in range(1, max(1, n // int(fs or 1)) + 1)],
+            "rr_ms": [800 for _ in range(max(0, n // int(fs or 1) - 1))],
+            "artifact_mask": [],
         },
         "hrv_time": {"sdnn_ms": 50, "rmssd_ms": 42},
         "intervals": {"qrs_ms": 90, "qt_ms": 360, "qtc_ms_bazett": 440, "uncertainty_ms": 25},
         "flags": {"pacemaker_detected": False, "ectopy_burden_pct": 0.0, "st_deviation_flag": False},
-        "version": "analyzer-1.0.0"
+        "version": "analyzer-1.0.0",
     }
 
+def _extract_features(samples: List[float], fs: float) -> Dict[str, Any]:
+    """
+    Unified extractor: use your real extractor if present,
+    otherwise map the fake analyzer into the same shape.
+    """
+    if _extract_features_real:
+        return _extract_features_real(samples, fs)
+    # Convert fake output into the feature-shaped dict the CSV route expects
+    fake = _fake_analysis(samples, fs)
+    return {
+        "rhythm_label": fake["summary"]["rhythm"],
+        "confidence": fake["summary"]["rhythm_confidence"],
+        "mean_hr_bpm": fake["summary"]["mean_hr_bpm"],
+        "min_hr_bpm": fake["summary"]["min_hr_bpm"],
+        "max_hr_bpm": fake["summary"]["max_hr_bpm"],
+        "signal_quality": fake["summary"]["signal_quality"],
+        "r_peaks_ms": fake["beats"]["r_peaks_ms"],
+        "rr_ms": fake["beats"]["rr_ms"],
+        "artifact_mask": fake["beats"]["artifact_mask"],
+        "sdnn_ms": fake["hrv_time"]["sdnn_ms"],
+        "rmssd_ms": fake["hrv_time"]["rmssd_ms"],
+        "qrs_ms": fake["intervals"]["qrs_ms"],
+        "qt_ms": fake["intervals"]["qt_ms"],
+        "qtc_ms_bazett": fake["intervals"]["qtc_ms_bazett"],
+        "uncertainty_ms": fake["intervals"]["uncertainty_ms"],
+        "ectopy_burden_pct": fake["flags"]["ectopy_burden_pct"],
+    }
+
+# ---- in-memory store for quick fetch-by-id ----
 STORE: Dict[str, Dict[str, Any]] = {}
 
-def _check_auth(auth_header: Optional[str]):
-    if not API_KEY:
-        return
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized: missing Bearer token")
-    token = auth_header.split(" ", 1)[1].strip()
-    if token != API_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized: bad token")
-
+# ---- JSON endpoint ----
 @app.post("/v1/ecg/analyze")
-def analyze_ecg(payload: ECGRequest, authorization: Optional[str] = Header(None)):
-    _check_auth(authorization)
+def analyze_ecg(
+    payload: ECGRequest,
+    credentials: HTTPAuthorizationCredentials = Security(auth_scheme)
+):
+    _require_bearer(credentials)
+
     if payload.units not in {"uV", "mV", "LSB"}:
         raise HTTPException(status_code=400, detail="units must be one of uV, mV, LSB")
     if payload.lead != "I":
@@ -114,11 +144,12 @@ def analyze_ecg(payload: ECGRequest, authorization: Optional[str] = Header(None)
     if payload.sampling_rate_hz not in {128, 250, 256, 512}:
         raise HTTPException(status_code=400, detail="Unsupported sampling_rate_hz")
 
-    result = fake_analysis(payload.samples, payload.sampling_rate_hz)
+    result = _fake_analysis(payload.samples, payload.sampling_rate_hz)
     resp = {"recording_id": payload.recording_id, **result}
     STORE[payload.recording_id] = resp
     return resp
 
+# ---- CSV upload endpoint ----
 @app.post("/v1/ecg/upload_csv")
 async def upload_csv(
     file: UploadFile = File(...),
@@ -126,17 +157,17 @@ async def upload_csv(
     units: str = Form("uV"),
     lead: str = Form("I"),
     recording_id: str = Form("csv_upload"),
-    start_timestamp_utc: str = Form(None),  # optional
-    authorization: Optional[str] = Header(None),
+    start_timestamp_utc: Optional[str] = Form(None),
+    credentials: HTTPAuthorizationCredentials = Security(auth_scheme)
 ):
-    _check_auth(authorization)
+    _require_bearer(credentials)
 
     if units not in {"uV", "mV", "LSB"}:
         raise HTTPException(status_code=400, detail="units must be one of uV, mV, LSB")
     if lead != "I":
         raise HTTPException(status_code=400, detail="lead must be 'I' for Apple Watch")
 
-    # Read CSV
+    # Read CSV (handles headers, spaces, multiple columns)
     contents = await file.read()
     text = contents.decode("utf-8", errors="ignore")
     reader = csv.reader(io.StringIO(text))
@@ -162,8 +193,7 @@ async def upload_csv(
     if len(samples) < 30:
         raise HTTPException(status_code=400, detail=f"Not enough numeric samples ({len(samples)})")
 
-    # Use your real feature extractor for CSV uploads
-    features = extract_features(samples, sampling_rate_hz)
+    features = _extract_features(samples, sampling_rate_hz)
 
     summary = {
         "rhythm": features["rhythm_label"],
@@ -203,20 +233,19 @@ async def upload_csv(
     STORE[recording_id] = response
     return response
 
-@app.post("/v1/ecg/upload_csv")
-async def upload_csv(
-    file: UploadFile = File(...),
-    sampling_rate_hz: float = Form(256),
-    units: str = Form("uV"),
-    lead: str = Form("I"),
-    recording_id: str = Form("csv_upload"),
-    start_timestamp_utc: str = Form(None),
+# ---- fetch by id ----
+@app.get("/v1/ecg/recordings/{recording_id}")
+def get_ecg(
+    recording_id: str,
     credentials: HTTPAuthorizationCredentials = Security(auth_scheme)
 ):
     _require_bearer(credentials)
-    ...
+    data = STORE.get(recording_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="recording_id not found")
+    return data
 
-# ------- helpers for CSV parsing -------
+# ---- helpers ----
 def _is_float(s: str) -> bool:
     try:
         float(s)
@@ -224,7 +253,7 @@ def _is_float(s: str) -> bool:
     except Exception:
         return False
 
-def _choose_numeric_column(rows: list[list[str]]) -> Optional[int]:
+def _choose_numeric_column(rows: List[List[str]]) -> Optional[int]:
     if not rows:
         return None
     n_cols = max(len(r) for r in rows)
