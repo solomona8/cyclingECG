@@ -13,8 +13,23 @@ A native **iPhone app** is now available in the `iOS/` directory! The app provid
 
 See [iOS/README.md](iOS/README.md) for complete setup instructions and documentation.
 
+## Enhanced Analysis (v2.0)
+
+The backend now includes **advanced ECG analysis features**:
+- ✅ Real QRS detection and duration measurement
+- ✅ QT interval detection with Bazett correction
+- ✅ P-wave detection for PR interval
+- ✅ T-wave detection for repolarization analysis
+- ✅ PVC/PAC detection (arrhythmia screening)
+- ✅ Ectopy burden calculation
+- ✅ Morphology variance analysis
+- ✅ Enhanced signal quality assessment
+
+See [ENHANCED_ANALYSIS.md](ENHANCED_ANALYSIS.md) for complete documentation.
+
 ## Endpoints
 - `POST /v1/ecg/analyze` — returns features + summary; includes `narrative` if `include_narrative=true` and `OPENAI_API_KEY` is set.
+- `POST /v1/ecg/upload_csv` — upload ECG data as CSV file for analysis
 - `GET /v1/ecg/recordings/{recording_id}` — retrieve by id.
 
 ## Env vars

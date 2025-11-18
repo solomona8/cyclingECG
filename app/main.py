@@ -144,10 +144,52 @@ def analyze_ecg(
     if payload.sampling_rate_hz not in {128, 250, 256, 512}:
         raise HTTPException(status_code=400, detail="Unsupported sampling_rate_hz")
 
-    result = _fake_analysis(payload.samples, payload.sampling_rate_hz)
-    resp = {"recording_id": payload.recording_id, **result}
-    STORE[payload.recording_id] = resp
-    return resp
+    # Use real feature extractor
+    features = _extract_features(payload.samples, payload.sampling_rate_hz)
+
+    # Format response
+    response = {
+        "recording_id": payload.recording_id,
+        "summary": {
+            "rhythm": features["rhythm_label"],
+            "rhythm_confidence": features["confidence"],
+            "mean_hr_bpm": features["mean_hr_bpm"],
+            "min_hr_bpm": features["min_hr_bpm"],
+            "max_hr_bpm": features["max_hr_bpm"],
+            "signal_quality": features["signal_quality"],
+        },
+        "beats": {
+            "r_peaks_ms": features["r_peaks_ms"],
+            "rr_ms": features["rr_ms"],
+            "artifact_mask": features["artifact_mask"],
+            "beat_count": features.get("beat_count", len(features["r_peaks_ms"])),
+        },
+        "hrv_time": {
+            "sdnn_ms": features["sdnn_ms"],
+            "rmssd_ms": features["rmssd_ms"]
+        },
+        "intervals": {
+            "qrs_ms": features["qrs_ms"],
+            "qt_ms": features["qt_ms"],
+            "qtc_ms_bazett": features["qtc_ms_bazett"],
+            "pr_ms": features.get("pr_ms"),
+            "uncertainty_ms": features["uncertainty_ms"]
+        },
+        "arrhythmia": {
+            "ectopy_burden_pct": features["ectopy_burden_pct"],
+            "pvcs_detected": features.get("pvcs_detected", 0),
+            "pacs_detected": features.get("pacs_detected", 0),
+            "morphology_variance": features.get("morphology_variance", 0.0)
+        },
+        "flags": {
+            "pacemaker_detected": False,
+            "st_deviation_flag": False
+        },
+        "version": payload.analyzer_version or "2.0.0"
+    }
+
+    STORE[payload.recording_id] = response
+    return response
 
 # ---- CSV upload endpoint ----
 @app.post("/v1/ecg/upload_csv")
@@ -211,6 +253,7 @@ async def upload_csv(
             "r_peaks_ms": features["r_peaks_ms"],
             "rr_ms": features["rr_ms"],
             "artifact_mask": features["artifact_mask"],
+            "beat_count": features.get("beat_count", len(features["r_peaks_ms"])),
         },
         "hrv_time": {
             "sdnn_ms": features["sdnn_ms"],
@@ -220,14 +263,20 @@ async def upload_csv(
             "qrs_ms": features["qrs_ms"],
             "qt_ms": features["qt_ms"],
             "qtc_ms_bazett": features["qtc_ms_bazett"],
+            "pr_ms": features.get("pr_ms"),
             "uncertainty_ms": features["uncertainty_ms"]
+        },
+        "arrhythmia": {
+            "ectopy_burden_pct": features["ectopy_burden_pct"],
+            "pvcs_detected": features.get("pvcs_detected", 0),
+            "pacs_detected": features.get("pacs_detected", 0),
+            "morphology_variance": features.get("morphology_variance", 0.0)
         },
         "flags": {
             "pacemaker_detected": False,
-            "ectopy_burden_pct": features["ectopy_burden_pct"],
             "st_deviation_flag": False
         },
-        "version": "1.0.0"
+        "version": "2.0.0"
     }
 
     STORE[recording_id] = response
