@@ -17,7 +17,8 @@ struct ECGListView: View {
                 EmptyStateView()
             } else {
                 List(healthKitManager.ecgRecordings) { recording in
-                    NavigationLink(destination: ECGDetailView(recording: recording)) {
+                    NavigationLink(destination: ECGDetailView(recording: recording)
+                        .environmentObject(analysisService)) {
                         ECGRecordingRow(recording: recording)
                     }
                 }
