@@ -3,6 +3,16 @@
 
 This backend computes deterministic ECG features from Apple Watch single‑lead data and (optionally) calls OpenAI to generate a patient‑friendly narrative.
 
+## iOS App
+
+A native **iPhone app** is now available in the `iOS/` directory! The app provides:
+- **HealthKit Integration**: Extract ECG recordings directly from Apple Watch
+- **Real-time Analysis**: Send recordings to this backend for detailed analysis
+- **Multiple Export Formats**: Export as JSON, CSV, PDF, or TXT
+- **Beautiful UI**: Modern SwiftUI interface with classification badges and detailed metrics
+
+See [iOS/README.md](iOS/README.md) for complete setup instructions and documentation.
+
 ## Endpoints
 - `POST /v1/ecg/analyze` — returns features + summary; includes `narrative` if `include_narrative=true` and `OPENAI_API_KEY` is set.
 - `GET /v1/ecg/recordings/{recording_id}` — retrieve by id.
