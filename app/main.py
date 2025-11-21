@@ -220,8 +220,8 @@ def analyze_ecg(
             }
         },
         "narrative": {
-            "patient_summary": f"ECG analysis shows {features.get('rhythm_label', 'undetermined')} rhythm with heart rate {mean_hr or 0:.0f} BPM.",
-            "clinician_notes": f"QTc: {features.get('qtc_ms_bazett', 0):.0f}ms, QRS: {features.get('qrs_ms', 0):.0f}ms. {features.get('pvcs_detected', 0)} PVCs, {features.get('pacs_detected', 0)} PACs detected.",
+            "patient_summary": f"ECG analysis shows {features.get('rhythm_label') or 'undetermined'} rhythm with heart rate {mean_hr or 0:.0f} BPM.",
+            "clinician_notes": f"QTc: {sanitize_value(features.get('qtc_ms_bazett')) or 0:.0f}ms, QRS: {sanitize_value(features.get('qrs_ms')) or 0:.0f}ms. {features.get('pvcs_detected') or 0} PVCs, {features.get('pacs_detected') or 0} PACs detected.",
             "safety_flags": []
         },
         "analyzer_version": payload.analyzer_version or "2.0.0"
@@ -344,8 +344,8 @@ async def upload_csv(
             }
         },
         "narrative": {
-            "patient_summary": f"ECG analysis shows {features.get('rhythm_label', 'undetermined')} rhythm with heart rate {mean_hr or 0:.0f} BPM.",
-            "clinician_notes": f"QTc: {features.get('qtc_ms_bazett', 0):.0f}ms, QRS: {features.get('qrs_ms', 0):.0f}ms. {features.get('pvcs_detected', 0)} PVCs, {features.get('pacs_detected', 0)} PACs detected.",
+            "patient_summary": f"ECG analysis shows {features.get('rhythm_label') or 'undetermined'} rhythm with heart rate {mean_hr or 0:.0f} BPM.",
+            "clinician_notes": f"QTc: {sanitize_value(features.get('qtc_ms_bazett')) or 0:.0f}ms, QRS: {sanitize_value(features.get('qrs_ms')) or 0:.0f}ms. {features.get('pvcs_detected') or 0} PVCs, {features.get('pacs_detected') or 0} PACs detected.",
             "safety_flags": []
         },
         "analyzer_version": "2.0.0"
