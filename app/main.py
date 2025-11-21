@@ -152,45 +152,59 @@ def analyze_ecg(
     # Use real feature extractor
     features = _extract_features(payload.samples, payload.sampling_rate_hz)
 
-    # Format response
+    # Calculate RR interval statistics for the response
+    rr_intervals = features["rr_ms"]
+    rr_mean = sum(rr_intervals) / len(rr_intervals) if rr_intervals else None
+    rr_min = min(rr_intervals) if rr_intervals else None
+    rr_max = max(rr_intervals) if rr_intervals else None
+
+    # Calculate coefficient of variation for RR intervals
+    if rr_mean and rr_mean > 0 and features["sdnn_ms"]:
+        rr_cv = (features["sdnn_ms"] / rr_mean) * 100
+    else:
+        rr_cv = None
+
+    # Format response to match iOS app's ECGAnalysisResponse structure
     response = {
         "recording_id": payload.recording_id,
-        "summary": {
-            "rhythm": features["rhythm_label"],
+        "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+        "features": {
+            "rhythm_classification": features["rhythm_label"],
             "rhythm_confidence": features["confidence"],
-            "mean_hr_bpm": features["mean_hr_bpm"],
-            "min_hr_bpm": features["min_hr_bpm"],
-            "max_hr_bpm": features["max_hr_bpm"],
-            "signal_quality": features["signal_quality"],
+            "heart_rate_bpm": {
+                "mean": features["mean_hr_bpm"],
+                "min": features["min_hr_bpm"],
+                "max": features["max_hr_bpm"]
+            },
+            "rr_intervals_ms": {
+                "mean": rr_mean,
+                "min": rr_min,
+                "max": rr_max,
+                "coefficient_of_variation": rr_cv
+            },
+            "hrv": {
+                "sdnn_ms": features["sdnn_ms"],
+                "rmssd_ms": features["rmssd_ms"]
+            },
+            "intervals": {
+                "qrs_duration_ms": features["qrs_ms"],
+                "qt_interval_ms": features["qt_ms"],
+                "qtc_ms": features["qtc_ms_bazett"]
+            },
+            "signal_quality": {
+                "overall_quality": features["signal_quality"],
+                "artifact_burden_percent": None  # Not currently calculated
+            },
+            "morphology": {
+                "ectopy_burden_percent": features["ectopy_burden_pct"]
+            }
         },
-        "beats": {
-            "r_peaks_ms": features["r_peaks_ms"],
-            "rr_ms": features["rr_ms"],
-            "artifact_mask": features["artifact_mask"],
-            "beat_count": features.get("beat_count", len(features["r_peaks_ms"])),
+        "narrative": {
+            "patient_summary": f"ECG analysis shows {features['rhythm_label']} rhythm with heart rate {features['mean_hr_bpm']:.0f} BPM.",
+            "clinician_notes": f"QTc: {features['qtc_ms_bazett']:.0f}ms, QRS: {features['qrs_ms']:.0f}ms. {features.get('pvcs_detected', 0)} PVCs, {features.get('pacs_detected', 0)} PACs detected.",
+            "safety_flags": []
         },
-        "hrv_time": {
-            "sdnn_ms": features["sdnn_ms"],
-            "rmssd_ms": features["rmssd_ms"]
-        },
-        "intervals": {
-            "qrs_ms": features["qrs_ms"],
-            "qt_ms": features["qt_ms"],
-            "qtc_ms_bazett": features["qtc_ms_bazett"],
-            "pr_ms": features.get("pr_ms"),
-            "uncertainty_ms": features["uncertainty_ms"]
-        },
-        "arrhythmia": {
-            "ectopy_burden_pct": features["ectopy_burden_pct"],
-            "pvcs_detected": features.get("pvcs_detected", 0),
-            "pacs_detected": features.get("pacs_detected", 0),
-            "morphology_variance": features.get("morphology_variance", 0.0)
-        },
-        "flags": {
-            "pacemaker_detected": False,
-            "st_deviation_flag": False
-        },
-        "version": payload.analyzer_version or "2.0.0"
+        "analyzer_version": payload.analyzer_version or "2.0.0"
     }
 
     STORE[payload.recording_id] = response
@@ -242,46 +256,59 @@ async def upload_csv(
 
     features = _extract_features(samples, sampling_rate_hz)
 
-    summary = {
-        "rhythm": features["rhythm_label"],
-        "rhythm_confidence": features["confidence"],
-        "mean_hr_bpm": features["mean_hr_bpm"],
-        "min_hr_bpm": features["min_hr_bpm"],
-        "max_hr_bpm": features["max_hr_bpm"],
-        "signal_quality": features["signal_quality"],
-    }
+    # Calculate RR interval statistics
+    rr_intervals = features["rr_ms"]
+    rr_mean = sum(rr_intervals) / len(rr_intervals) if rr_intervals else None
+    rr_min = min(rr_intervals) if rr_intervals else None
+    rr_max = max(rr_intervals) if rr_intervals else None
 
+    # Calculate coefficient of variation for RR intervals
+    if rr_mean and rr_mean > 0 and features["sdnn_ms"]:
+        rr_cv = (features["sdnn_ms"] / rr_mean) * 100
+    else:
+        rr_cv = None
+
+    # Format response to match iOS app's ECGAnalysisResponse structure
     response = {
         "recording_id": recording_id,
-        "summary": summary,
-        "beats": {
-            "r_peaks_ms": features["r_peaks_ms"],
-            "rr_ms": features["rr_ms"],
-            "artifact_mask": features["artifact_mask"],
-            "beat_count": features.get("beat_count", len(features["r_peaks_ms"])),
+        "timestamp_utc": start_timestamp_utc or (datetime.utcnow().isoformat() + "Z"),
+        "features": {
+            "rhythm_classification": features["rhythm_label"],
+            "rhythm_confidence": features["confidence"],
+            "heart_rate_bpm": {
+                "mean": features["mean_hr_bpm"],
+                "min": features["min_hr_bpm"],
+                "max": features["max_hr_bpm"]
+            },
+            "rr_intervals_ms": {
+                "mean": rr_mean,
+                "min": rr_min,
+                "max": rr_max,
+                "coefficient_of_variation": rr_cv
+            },
+            "hrv": {
+                "sdnn_ms": features["sdnn_ms"],
+                "rmssd_ms": features["rmssd_ms"]
+            },
+            "intervals": {
+                "qrs_duration_ms": features["qrs_ms"],
+                "qt_interval_ms": features["qt_ms"],
+                "qtc_ms": features["qtc_ms_bazett"]
+            },
+            "signal_quality": {
+                "overall_quality": features["signal_quality"],
+                "artifact_burden_percent": None
+            },
+            "morphology": {
+                "ectopy_burden_percent": features["ectopy_burden_pct"]
+            }
         },
-        "hrv_time": {
-            "sdnn_ms": features["sdnn_ms"],
-            "rmssd_ms": features["rmssd_ms"]
+        "narrative": {
+            "patient_summary": f"ECG analysis shows {features['rhythm_label']} rhythm with heart rate {features['mean_hr_bpm']:.0f} BPM.",
+            "clinician_notes": f"QTc: {features['qtc_ms_bazett']:.0f}ms, QRS: {features['qrs_ms']:.0f}ms. {features.get('pvcs_detected', 0)} PVCs, {features.get('pacs_detected', 0)} PACs detected.",
+            "safety_flags": []
         },
-        "intervals": {
-            "qrs_ms": features["qrs_ms"],
-            "qt_ms": features["qt_ms"],
-            "qtc_ms_bazett": features["qtc_ms_bazett"],
-            "pr_ms": features.get("pr_ms"),
-            "uncertainty_ms": features["uncertainty_ms"]
-        },
-        "arrhythmia": {
-            "ectopy_burden_pct": features["ectopy_burden_pct"],
-            "pvcs_detected": features.get("pvcs_detected", 0),
-            "pacs_detected": features.get("pacs_detected", 0),
-            "morphology_variance": features.get("morphology_variance", 0.0)
-        },
-        "flags": {
-            "pacemaker_detected": False,
-            "st_deviation_flag": False
-        },
-        "version": "2.0.0"
+        "analyzer_version": "2.0.0"
     }
 
     STORE[recording_id] = response
