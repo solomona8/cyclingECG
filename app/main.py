@@ -150,58 +150,78 @@ def analyze_ecg(
         raise HTTPException(status_code=400, detail="Unsupported sampling_rate_hz")
 
     # Use real feature extractor
-    features = _extract_features(payload.samples, payload.sampling_rate_hz)
+    try:
+        features = _extract_features(payload.samples, payload.sampling_rate_hz)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Feature extraction failed: {str(e)}")
+
+    # Helper function to sanitize numeric values (replace NaN/Inf with None)
+    def sanitize_value(val):
+        if val is None:
+            return None
+        try:
+            import math
+            if math.isnan(val) or math.isinf(val):
+                return None
+            return val
+        except (TypeError, ValueError):
+            return val
 
     # Calculate RR interval statistics for the response
-    rr_intervals = features["rr_ms"]
+    rr_intervals = features.get("rr_ms", [])
     rr_mean = sum(rr_intervals) / len(rr_intervals) if rr_intervals else None
     rr_min = min(rr_intervals) if rr_intervals else None
     rr_max = max(rr_intervals) if rr_intervals else None
 
     # Calculate coefficient of variation for RR intervals
-    if rr_mean and rr_mean > 0 and features["sdnn_ms"]:
+    if rr_mean and rr_mean > 0 and features.get("sdnn_ms"):
         rr_cv = (features["sdnn_ms"] / rr_mean) * 100
     else:
         rr_cv = None
+
+    # Sanitize all numeric values
+    mean_hr = sanitize_value(features.get("mean_hr_bpm", 0.0))
+    min_hr = sanitize_value(features.get("min_hr_bpm", 0.0))
+    max_hr = sanitize_value(features.get("max_hr_bpm", 0.0))
 
     # Format response to match iOS app's ECGAnalysisResponse structure
     response = {
         "recording_id": payload.recording_id,
         "timestamp_utc": datetime.utcnow().isoformat() + "Z",
         "features": {
-            "rhythm_classification": features["rhythm_label"],
-            "rhythm_confidence": features["confidence"],
+            "rhythm_classification": features.get("rhythm_label", "undetermined"),
+            "rhythm_confidence": sanitize_value(features.get("confidence", 0.0)),
             "heart_rate_bpm": {
-                "mean": features["mean_hr_bpm"],
-                "min": features["min_hr_bpm"],
-                "max": features["max_hr_bpm"]
+                "mean": mean_hr,
+                "min": min_hr,
+                "max": max_hr
             },
             "rr_intervals_ms": {
-                "mean": rr_mean,
-                "min": rr_min,
-                "max": rr_max,
-                "coefficient_of_variation": rr_cv
+                "mean": sanitize_value(rr_mean),
+                "min": sanitize_value(rr_min),
+                "max": sanitize_value(rr_max),
+                "coefficient_of_variation": sanitize_value(rr_cv)
             },
             "hrv": {
-                "sdnn_ms": features["sdnn_ms"],
-                "rmssd_ms": features["rmssd_ms"]
+                "sdnn_ms": sanitize_value(features.get("sdnn_ms", 0.0)),
+                "rmssd_ms": sanitize_value(features.get("rmssd_ms", 0.0))
             },
             "intervals": {
-                "qrs_duration_ms": features["qrs_ms"],
-                "qt_interval_ms": features["qt_ms"],
-                "qtc_ms": features["qtc_ms_bazett"]
+                "qrs_duration_ms": sanitize_value(features.get("qrs_ms", 0.0)),
+                "qt_interval_ms": sanitize_value(features.get("qt_ms", 0.0)),
+                "qtc_ms": sanitize_value(features.get("qtc_ms_bazett", 0.0))
             },
             "signal_quality": {
-                "overall_quality": features["signal_quality"],
+                "overall_quality": features.get("signal_quality", "moderate"),
                 "artifact_burden_percent": None  # Not currently calculated
             },
             "morphology": {
-                "ectopy_burden_percent": features["ectopy_burden_pct"]
+                "ectopy_burden_percent": sanitize_value(features.get("ectopy_burden_pct", 0.0))
             }
         },
         "narrative": {
-            "patient_summary": f"ECG analysis shows {features['rhythm_label']} rhythm with heart rate {features['mean_hr_bpm']:.0f} BPM.",
-            "clinician_notes": f"QTc: {features['qtc_ms_bazett']:.0f}ms, QRS: {features['qrs_ms']:.0f}ms. {features.get('pvcs_detected', 0)} PVCs, {features.get('pacs_detected', 0)} PACs detected.",
+            "patient_summary": f"ECG analysis shows {features.get('rhythm_label', 'undetermined')} rhythm with heart rate {mean_hr or 0:.0f} BPM.",
+            "clinician_notes": f"QTc: {features.get('qtc_ms_bazett', 0):.0f}ms, QRS: {features.get('qrs_ms', 0):.0f}ms. {features.get('pvcs_detected', 0)} PVCs, {features.get('pacs_detected', 0)} PACs detected.",
             "safety_flags": []
         },
         "analyzer_version": payload.analyzer_version or "2.0.0"
@@ -254,58 +274,78 @@ async def upload_csv(
     if len(samples) < 30:
         raise HTTPException(status_code=400, detail=f"Not enough numeric samples ({len(samples)})")
 
-    features = _extract_features(samples, sampling_rate_hz)
+    try:
+        features = _extract_features(samples, sampling_rate_hz)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Feature extraction failed: {str(e)}")
+
+    # Helper function to sanitize numeric values (replace NaN/Inf with None)
+    def sanitize_value(val):
+        if val is None:
+            return None
+        try:
+            import math
+            if math.isnan(val) or math.isinf(val):
+                return None
+            return val
+        except (TypeError, ValueError):
+            return val
 
     # Calculate RR interval statistics
-    rr_intervals = features["rr_ms"]
+    rr_intervals = features.get("rr_ms", [])
     rr_mean = sum(rr_intervals) / len(rr_intervals) if rr_intervals else None
     rr_min = min(rr_intervals) if rr_intervals else None
     rr_max = max(rr_intervals) if rr_intervals else None
 
     # Calculate coefficient of variation for RR intervals
-    if rr_mean and rr_mean > 0 and features["sdnn_ms"]:
+    if rr_mean and rr_mean > 0 and features.get("sdnn_ms"):
         rr_cv = (features["sdnn_ms"] / rr_mean) * 100
     else:
         rr_cv = None
+
+    # Sanitize all numeric values
+    mean_hr = sanitize_value(features.get("mean_hr_bpm", 0.0))
+    min_hr = sanitize_value(features.get("min_hr_bpm", 0.0))
+    max_hr = sanitize_value(features.get("max_hr_bpm", 0.0))
 
     # Format response to match iOS app's ECGAnalysisResponse structure
     response = {
         "recording_id": recording_id,
         "timestamp_utc": start_timestamp_utc or (datetime.utcnow().isoformat() + "Z"),
         "features": {
-            "rhythm_classification": features["rhythm_label"],
-            "rhythm_confidence": features["confidence"],
+            "rhythm_classification": features.get("rhythm_label", "undetermined"),
+            "rhythm_confidence": sanitize_value(features.get("confidence", 0.0)),
             "heart_rate_bpm": {
-                "mean": features["mean_hr_bpm"],
-                "min": features["min_hr_bpm"],
-                "max": features["max_hr_bpm"]
+                "mean": mean_hr,
+                "min": min_hr,
+                "max": max_hr
             },
             "rr_intervals_ms": {
-                "mean": rr_mean,
-                "min": rr_min,
-                "max": rr_max,
-                "coefficient_of_variation": rr_cv
+                "mean": sanitize_value(rr_mean),
+                "min": sanitize_value(rr_min),
+                "max": sanitize_value(rr_max),
+                "coefficient_of_variation": sanitize_value(rr_cv)
             },
             "hrv": {
-                "sdnn_ms": features["sdnn_ms"],
-                "rmssd_ms": features["rmssd_ms"]
+                "sdnn_ms": sanitize_value(features.get("sdnn_ms", 0.0)),
+                "rmssd_ms": sanitize_value(features.get("rmssd_ms", 0.0))
             },
             "intervals": {
-                "qrs_duration_ms": features["qrs_ms"],
-                "qt_interval_ms": features["qt_ms"],
-                "qtc_ms": features["qtc_ms_bazett"]
+                "qrs_duration_ms": sanitize_value(features.get("qrs_ms", 0.0)),
+                "qt_interval_ms": sanitize_value(features.get("qt_ms", 0.0)),
+                "qtc_ms": sanitize_value(features.get("qtc_ms_bazett", 0.0))
             },
             "signal_quality": {
-                "overall_quality": features["signal_quality"],
+                "overall_quality": features.get("signal_quality", "moderate"),
                 "artifact_burden_percent": None
             },
             "morphology": {
-                "ectopy_burden_percent": features["ectopy_burden_pct"]
+                "ectopy_burden_percent": sanitize_value(features.get("ectopy_burden_pct", 0.0))
             }
         },
         "narrative": {
-            "patient_summary": f"ECG analysis shows {features['rhythm_label']} rhythm with heart rate {features['mean_hr_bpm']:.0f} BPM.",
-            "clinician_notes": f"QTc: {features['qtc_ms_bazett']:.0f}ms, QRS: {features['qrs_ms']:.0f}ms. {features.get('pvcs_detected', 0)} PVCs, {features.get('pacs_detected', 0)} PACs detected.",
+            "patient_summary": f"ECG analysis shows {features.get('rhythm_label', 'undetermined')} rhythm with heart rate {mean_hr or 0:.0f} BPM.",
+            "clinician_notes": f"QTc: {features.get('qtc_ms_bazett', 0):.0f}ms, QRS: {features.get('qrs_ms', 0):.0f}ms. {features.get('pvcs_detected', 0)} PVCs, {features.get('pacs_detected', 0)} PACs detected.",
             "safety_flags": []
         },
         "analyzer_version": "2.0.0"
