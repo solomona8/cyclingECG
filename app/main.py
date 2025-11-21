@@ -22,6 +22,30 @@ def root():
 def health():
     return {"status": "ok"}
 
+# Debug endpoint to log request details
+@app.post("/v1/ecg/analyze/debug")
+def analyze_ecg_debug(request: Request, payload: ECGRequest):
+    import json
+    debug_info = {
+        "request_received": True,
+        "recording_id": payload.recording_id,
+        "num_samples": len(payload.samples),
+        "sampling_rate": payload.sampling_rate_hz,
+        "units": payload.units,
+        "lead": payload.lead,
+        "has_device_info": payload.device_info is not None,
+        "has_context": payload.context is not None,
+        "sample_range": {
+            "min": min(payload.samples) if payload.samples else None,
+            "max": max(payload.samples) if payload.samples else None,
+            "mean": sum(payload.samples) / len(payload.samples) if payload.samples else None
+        }
+    }
+    print("=== DEBUG REQUEST ===")
+    print(json.dumps(debug_info, indent=2))
+    print("=== END DEBUG ===")
+    return debug_info
+
 # ---- config & models ----
 API_KEY = os.environ.get("API_KEY")  # no default; auth is disabled if unset
 
@@ -151,8 +175,13 @@ def analyze_ecg(
 
     # Use real feature extractor
     try:
+        print(f"[ANALYZE] Processing recording_id={payload.recording_id}, samples={len(payload.samples)}, fs={payload.sampling_rate_hz}")
         features = _extract_features(payload.samples, payload.sampling_rate_hz)
+        print(f"[ANALYZE] Feature extraction successful, detected {features.get('beat_count', 0)} beats")
     except Exception as e:
+        print(f"[ANALYZE] Feature extraction FAILED: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Feature extraction failed: {str(e)}")
 
     # Helper function to sanitize numeric values (replace NaN/Inf with None)
@@ -228,6 +257,8 @@ def analyze_ecg(
     }
 
     STORE[payload.recording_id] = response
+    print(f"[ANALYZE] Response generated successfully for {payload.recording_id}")
+    print(f"[ANALYZE] Response keys: {list(response.keys())}")
     return response
 
 # ---- CSV upload endpoint ----
