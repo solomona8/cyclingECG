@@ -31,11 +31,16 @@ class FiltersApplied(BaseModel):
     notch_hz: Optional[float] = None
 
 class DeviceInfo(BaseModel):
+    manufacturer: Optional[str] = None
     model: Optional[str] = None
+    software_version: Optional[str] = None
     os: Optional[str] = None
     app_version: Optional[str] = None
 
-class ContextInfo(BaseModel):
+class RecordingContext(BaseModel):
+    symptoms: Optional[List[str]] = None
+    activity: Optional[str] = None
+    position: Optional[str] = None
     duration_s: Optional[float] = None
     signal_quality_flag: Optional[str] = Field(default=None, pattern="^(good|moderate|poor)$")
 
@@ -51,12 +56,12 @@ class ECGRequest(BaseModel):
     sampling_rate_hz: float
     units: str
     lead: str
-    start_timestamp_utc: datetime
+    start_timestamp_utc: str  # Accept as string to match iOS app
     gain: Optional[float] = None
     adc_bits: Optional[int] = None
     filters_applied: Optional[FiltersApplied] = None
-    device: Optional[DeviceInfo] = None
-    context: Optional[ContextInfo] = None
+    device_info: Optional[DeviceInfo] = None  # Changed from 'device'
+    context: Optional[RecordingContext] = None  # Changed to RecordingContext
     user: Optional[UserInfo] = None
     symptoms: Optional[List[str]] = None
     analyzer_version: Optional[str] = None
