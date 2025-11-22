@@ -15,7 +15,7 @@ class ECGAnalysisService: ObservableObject {
     private let baseURL: String
     private let apiKey: String?
 
-    init(baseURL: String = "http://localhost:8000", apiKey: String? = nil) {
+    init(baseURL: String = "https://cyclingecg.onrender.com", apiKey: String? = nil) {
         self.baseURL = baseURL
         self.apiKey = apiKey
     }
