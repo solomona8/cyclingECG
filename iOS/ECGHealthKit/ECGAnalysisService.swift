@@ -61,6 +61,19 @@ class ECGAnalysisService: ObservableObject {
                 return nil
             }
 
+            // DEBUG: Print raw response
+            print("=== SERVER RESPONSE DEBUG ===")
+            print("Status code: \(httpResponse.statusCode)")
+            print("Content-Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "none")")
+            print("Data length: \(data.count) bytes")
+            if let rawJSON = String(data: data, encoding: .utf8) {
+                print("Raw JSON response:")
+                print(rawJSON)
+            } else {
+                print("ERROR: Could not decode data as UTF-8 string")
+            }
+            print("=== END DEBUG ===")
+
             guard httpResponse.statusCode == 200 else {
                 let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
                 await MainActor.run {
