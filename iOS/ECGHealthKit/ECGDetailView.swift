@@ -12,7 +12,7 @@ struct ECGDetailView: View {
     let recording: ECGRecording
 
     @EnvironmentObject var analysisService: ECGAnalysisService
-    @AppStorage("api_url") private var apiURL = "http://localhost:8000"
+    @AppStorage("api_url") private var apiURL = "https://cyclingecg.onrender.com"
     @AppStorage("api_key") private var apiKey = ""
 
     @State private var showingExportSheet = false
@@ -140,7 +140,7 @@ struct AnalyzeButton: View {
     let recording: ECGRecording
 
     @EnvironmentObject var analysisService: ECGAnalysisService
-    @AppStorage("api_url") private var apiURL = "http://localhost:8000"
+    @AppStorage("api_url") private var apiURL = "https://cyclingecg.onrender.com"
     @AppStorage("api_key") private var apiKey = ""
 
     var body: some View {

@@ -125,7 +125,7 @@ struct SettingsView: View {
     @EnvironmentObject var analysisService: ECGAnalysisService
     @Environment(\.dismiss) var dismiss
 
-    @AppStorage("api_url") private var apiURL = "http://localhost:8000"
+    @AppStorage("api_url") private var apiURL = "https://cyclingecg.onrender.com"
     @AppStorage("api_key") private var apiKey = ""
 
     var body: some View {
