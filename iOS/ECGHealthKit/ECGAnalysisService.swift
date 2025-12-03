@@ -28,7 +28,37 @@ class ECGAnalysisService: ObservableObject {
             analysisError = nil
         }
 
+        // Validate that we have sufficient voltage measurements
+        print("=== ECG DATA VALIDATION ===")
+        print("Recording ID: \(recording.id)")
+        print("Voltage measurements count: \(recording.voltageMeasurements.count)")
+        print("Sampling frequency: \(recording.samplingFrequency)")
+        print("Duration: \(recording.duration) seconds")
+
+        if recording.voltageMeasurements.isEmpty {
+            await MainActor.run {
+                analysisError = "No voltage measurements found in this ECG recording. The ECG data may be corrupted or incomplete."
+                isAnalyzing = false
+            }
+            print("ERROR: Empty voltage measurements array")
+            return nil
+        }
+
+        if recording.voltageMeasurements.count < 100 {
+            await MainActor.run {
+                analysisError = "Insufficient ECG data: only \(recording.voltageMeasurements.count) samples (minimum 100 required). The recording may be too short or incomplete."
+                isAnalyzing = false
+            }
+            print("ERROR: Only \(recording.voltageMeasurements.count) samples, need at least 100")
+            return nil
+        }
+
         let apiRequest = recording.toAPIRequest(apiURL: baseURL)
+
+        // Log the request data
+        print("Request data - samples: \(apiRequest.samples.count), sampling rate: \(apiRequest.sampling_rate_hz) Hz")
+        print("=== END VALIDATION ===")
+
 
         guard let url = URL(string: "\(baseURL)/v1/ecg/analyze") else {
             await MainActor.run {
@@ -49,7 +79,19 @@ class ECGAnalysisService: ObservableObject {
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
-            request.httpBody = try encoder.encode(apiRequest)
+
+            // Encode the request with specific error handling
+            do {
+                request.httpBody = try encoder.encode(apiRequest)
+                print("Successfully encoded request body (\(request.httpBody?.count ?? 0) bytes)")
+            } catch {
+                await MainActor.run {
+                    analysisError = "Failed to encode ECG data: \(error.localizedDescription)"
+                    isAnalyzing = false
+                }
+                print("ERROR: Failed to encode API request: \(error)")
+                return nil
+            }
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -83,8 +125,23 @@ class ECGAnalysisService: ObservableObject {
                 return nil
             }
 
+            // Decode the response with specific error handling
             let decoder = JSONDecoder()
-            let analysisResponse = try decoder.decode(ECGAnalysisResponse.self, from: data)
+            let analysisResponse: ECGAnalysisResponse
+            do {
+                analysisResponse = try decoder.decode(ECGAnalysisResponse.self, from: data)
+                print("Successfully decoded analysis response")
+            } catch {
+                print("ERROR: Failed to decode server response: \(error)")
+                if let decodingError = error as? DecodingError {
+                    print("Decoding error details: \(decodingError)")
+                }
+                await MainActor.run {
+                    analysisError = "Failed to decode server response: \(error.localizedDescription). The server may have returned invalid data."
+                    isAnalyzing = false
+                }
+                return nil
+            }
 
             await MainActor.run {
                 analysisResults[recording.id] = analysisResponse
@@ -94,6 +151,7 @@ class ECGAnalysisService: ObservableObject {
             return analysisResponse
 
         } catch {
+            print("ERROR: Network or unknown error: \(error)")
             await MainActor.run {
                 analysisError = "Analysis failed: \(error.localizedDescription)"
                 isAnalyzing = false

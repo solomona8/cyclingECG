@@ -118,6 +118,12 @@ class HealthKitManager: ObservableObject {
             var voltageMeasurements: [Double] = []
             var samplingFrequency: Double = 0
 
+            print("=== EXTRACTING ECG DATA ===")
+            print("ECG ID: \(ecg.uuid.uuidString)")
+            print("Start date: \(ecg.startDate)")
+            print("End date: \(ecg.endDate)")
+            print("Number of voltage measurements (metadata): \(ecg.numberOfVoltageMeasurements)")
+
             let query = HKElectrocardiogramQuery(ecg) { query, result in
                 switch result {
                 case .measurement(let measurement):
@@ -125,6 +131,9 @@ class HealthKitManager: ObservableObject {
                     if let voltageQuantity = measurement.quantity(for: .appleWatchSimilarToLeadI) {
                         let voltage = voltageQuantity.doubleValue(for: HKUnit.volt())
                         voltageMeasurements.append(voltage)
+                    } else {
+                        // This is important - if we can't get voltage, log it
+                        print("WARNING: Could not extract voltage from measurement")
                     }
 
                 case .done:
@@ -132,6 +141,18 @@ class HealthKitManager: ObservableObject {
                     if voltageMeasurements.count > 0 {
                         let duration = ecg.endDate.timeIntervalSince(ecg.startDate)
                         samplingFrequency = Double(voltageMeasurements.count) / duration
+                    }
+
+                    print("Extraction complete:")
+                    print("- Extracted \(voltageMeasurements.count) voltage measurements")
+                    print("- Expected \(ecg.numberOfVoltageMeasurements) measurements")
+                    print("- Sampling frequency: \(samplingFrequency) Hz")
+                    print("=== END EXTRACTION ===")
+
+                    if voltageMeasurements.isEmpty {
+                        print("ERROR: No voltage measurements were extracted!")
+                    } else if voltageMeasurements.count < ecg.numberOfVoltageMeasurements {
+                        print("WARNING: Extracted fewer measurements than expected")
                     }
 
                     // Create ECG recording
