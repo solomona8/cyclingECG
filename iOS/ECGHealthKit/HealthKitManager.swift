@@ -73,26 +73,26 @@ class HealthKitManager: ObservableObject {
             predicate: nil,
             limit: HKObjectQueryNoLimit,
             sortDescriptors: [sortDescriptor]
-        ) { [weak self] query, samples, error in
-
-            guard let self = self else { return }
+        ) { query, samples, error in
 
             if let error = error {
-                Task { @MainActor in
-                    self.authorizationError = "Error fetching ECGs: \(error.localizedDescription)"
-                    self.isLoading = false
+                Task { @MainActor [weak self] in
+                    self?.authorizationError = "Error fetching ECGs: \(error.localizedDescription)"
+                    self?.isLoading = false
                 }
                 return
             }
 
             guard let ecgSamples = samples as? [HKElectrocardiogram] else {
-                Task { @MainActor in
-                    self.isLoading = false
+                Task { @MainActor [weak self] in
+                    self?.isLoading = false
                 }
                 return
             }
 
-            Task {
+            Task { [weak self] in
+                guard let self = self else { return }
+
                 var recordings: [ECGRecording] = []
 
                 for ecgSample in ecgSamples {

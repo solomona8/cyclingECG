@@ -391,7 +391,7 @@ class ExportManager {
 
         let attributedText = NSAttributedString(string: contentText, attributes: attributes)
         let textSize = attributedText.boundingRect(
-            with: CGSize(width: 500, height: .greatestFiniteMagnitude),
+            with: CGSize(width: 500, height: CGFloat.greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading],
             context: nil
         )
