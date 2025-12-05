@@ -156,16 +156,18 @@ struct ECGRecording: Identifiable, Codable {
         let decodedVoltageMeasurements = try container.decode([Double].self, forKey: .voltageMeasurements)
         let decodedNumberOfVoltageMeasurements = try container.decode(Int.self, forKey: .numberOfVoltageMeasurements)
 
-        // Initialize properties
-        self.id = decodedId
-        self.startDate = decodedStartDate
-        self.endDate = decodedEndDate
-        self.classification = decodedClassification
-        self.symptomsStatus = decodedSymptomsStatus
-        self.averageHeartRate = decodedAverageHeartRate
-        self.samplingFrequency = decodedSamplingFrequency
-        self.voltageMeasurements = decodedVoltageMeasurements
-        self.numberOfVoltageMeasurements = decodedNumberOfVoltageMeasurements
+        // Call memberwise initializer
+        self.init(
+            id: decodedId,
+            startDate: decodedStartDate,
+            endDate: decodedEndDate,
+            classification: decodedClassification,
+            symptomsStatus: decodedSymptomsStatus,
+            averageHeartRate: decodedAverageHeartRate,
+            samplingFrequency: decodedSamplingFrequency,
+            voltageMeasurements: decodedVoltageMeasurements,
+            numberOfVoltageMeasurements: decodedNumberOfVoltageMeasurements
+        )
     }
 
     func encode(to encoder: Encoder) throws {

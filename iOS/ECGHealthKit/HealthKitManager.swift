@@ -37,9 +37,7 @@ class HealthKitManager: ObservableObject {
 
     func requestAuthorization() async {
         guard HKHealthStore.isHealthDataAvailable() else {
-            await MainActor.run {
-                authorizationError = "HealthKit is not available on this device"
-            }
+            authorizationError = "HealthKit is not available on this device"
             return
         }
 
@@ -47,24 +45,18 @@ class HealthKitManager: ObservableObject {
 
         do {
             try await healthStore.requestAuthorization(toShare: [], read: [ecgType])
-            await MainActor.run {
-                isAuthorized = true
-                authorizationError = nil
-            }
+            isAuthorized = true
+            authorizationError = nil
         } catch {
-            await MainActor.run {
-                authorizationError = "Failed to authorize HealthKit: \(error.localizedDescription)"
-                isAuthorized = false
-            }
+            authorizationError = "Failed to authorize HealthKit: \(error.localizedDescription)"
+            isAuthorized = false
         }
     }
 
     // MARK: - Fetch ECG Recordings
 
     func fetchECGRecordings() async {
-        await MainActor.run {
-            isLoading = true
-        }
+        isLoading = true
 
         let ecgType = HKObjectType.electrocardiogramType()
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
@@ -94,8 +86,8 @@ class HealthKitManager: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
 
+                // Extract recordings sequentially
                 var recordings: [ECGRecording] = []
-
                 for ecgSample in ecgSamples {
                     if let recording = await self.extractECGData(from: ecgSample) {
                         recordings.append(recording)
@@ -112,7 +104,7 @@ class HealthKitManager: ObservableObject {
 
     // MARK: - Extract ECG Data
 
-    private func extractECGData(from ecg: HKElectrocardiogram) async -> ECGRecording? {
+    nonisolated private func extractECGData(from ecg: HKElectrocardiogram) async -> ECGRecording? {
         return await withCheckedContinuation { continuation in
             var voltageMeasurements: [Double] = []
             var samplingFrequency: Double = 0
