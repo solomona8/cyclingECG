@@ -8,6 +8,7 @@
 import Foundation
 import HealthKit
 
+@MainActor
 class HealthKitManager: ObservableObject {
     private let healthStore = HKHealthStore()
 
@@ -90,7 +91,7 @@ class HealthKitManager: ObservableObject {
                 return
             }
 
-            Task { [weak self] in
+            Task { @MainActor [weak self] in
                 guard let self = self else { return }
 
                 var recordings: [ECGRecording] = []
@@ -101,10 +102,8 @@ class HealthKitManager: ObservableObject {
                     }
                 }
 
-                await MainActor.run {
-                    self.ecgRecordings = recordings
-                    self.isLoading = false
-                }
+                self.ecgRecordings = recordings
+                self.isLoading = false
             }
         }
 

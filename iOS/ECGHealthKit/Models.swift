@@ -90,6 +90,31 @@ struct ECGRecording: Identifiable, Codable {
         )
     }
 
+    // MARK: - Initializers
+
+    // Memberwise initializer (required since we have custom Decodable init)
+    init(
+        id: String,
+        startDate: Date,
+        endDate: Date,
+        classification: HKElectrocardiogram.Classification,
+        symptomsStatus: HKElectrocardiogram.SymptomsStatus,
+        averageHeartRate: HKQuantity?,
+        samplingFrequency: Double,
+        voltageMeasurements: [Double],
+        numberOfVoltageMeasurements: Int
+    ) {
+        self.id = id
+        self.startDate = startDate
+        self.endDate = endDate
+        self.classification = classification
+        self.symptomsStatus = symptomsStatus
+        self.averageHeartRate = averageHeartRate
+        self.samplingFrequency = samplingFrequency
+        self.voltageMeasurements = voltageMeasurements
+        self.numberOfVoltageMeasurements = numberOfVoltageMeasurements
+    }
+
     // MARK: - Codable Conformance
 
     enum CodingKeys: String, CodingKey {
