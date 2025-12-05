@@ -159,21 +159,36 @@ struct AnalyzeButton: View {
 
             Button(action: {
                 Task {
-                    // Update service with current settings
-                    let service = ECGAnalysisService(
-                        baseURL: apiURL,
-                        apiKey: apiKey.isEmpty ? nil : apiKey
-                    )
-
-                    // Copy the published state
-                    service.analysisResults = analysisService.analysisResults
-
-                    await service.analyzeECG(recording)
-
-                    // Update the main service
+                    // Set analyzing state on the environment object so UI updates
                     await MainActor.run {
-                        analysisService.analysisResults = service.analysisResults
-                        analysisService.analysisError = service.analysisError
+                        analysisService.isAnalyzing = true
+                        analysisService.analysisError = nil
+                    }
+
+                    do {
+                        // Update service with current settings
+                        let service = ECGAnalysisService(
+                            baseURL: apiURL,
+                            apiKey: apiKey.isEmpty ? nil : apiKey
+                        )
+
+                        // Copy the published state
+                        service.analysisResults = analysisService.analysisResults
+
+                        let _ = await service.analyzeECG(recording)
+
+                        // Update the main service with all results
+                        await MainActor.run {
+                            analysisService.analysisResults = service.analysisResults
+                            analysisService.analysisError = service.analysisError
+                            analysisService.isAnalyzing = false
+                        }
+                    } catch {
+                        // Handle any unexpected errors
+                        await MainActor.run {
+                            analysisService.analysisError = "Analysis failed: \(error.localizedDescription)"
+                            analysisService.isAnalyzing = false
+                        }
                     }
                 }
             }) {
