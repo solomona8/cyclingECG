@@ -109,28 +109,42 @@ extension ECGRecording {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        id = try container.decode(String.self, forKey: .id)
-        startDate = try container.decode(Date.self, forKey: .startDate)
-        endDate = try container.decode(Date.self, forKey: .endDate)
+        let id = try container.decode(String.self, forKey: .id)
+        let startDate = try container.decode(Date.self, forKey: .startDate)
+        let endDate = try container.decode(Date.self, forKey: .endDate)
 
         // Decode classification as raw value
         let classificationRawValue = try container.decode(Int.self, forKey: .classification)
-        classification = HKElectrocardiogram.Classification(rawValue: classificationRawValue) ?? .notSet
+        let classification = HKElectrocardiogram.Classification(rawValue: classificationRawValue) ?? .notSet
 
         // Decode symptoms status as raw value
         let symptomsRawValue = try container.decode(Int.self, forKey: .symptomsStatus)
-        symptomsStatus = HKElectrocardiogram.SymptomsStatus(rawValue: symptomsRawValue) ?? .notSet
+        let symptomsStatus = HKElectrocardiogram.SymptomsStatus(rawValue: symptomsRawValue) ?? .notSet
 
         // Handle HKQuantity (decode as optional double in BPM)
+        let averageHeartRate: HKQuantity?
         if let heartRateBPM = try container.decodeIfPresent(Double.self, forKey: .averageHeartRate) {
             averageHeartRate = HKQuantity(unit: HKUnit.count().unitDivided(by: .minute()), doubleValue: heartRateBPM)
         } else {
             averageHeartRate = nil
         }
 
-        samplingFrequency = try container.decode(Double.self, forKey: .samplingFrequency)
-        voltageMeasurements = try container.decode([Double].self, forKey: .voltageMeasurements)
-        numberOfVoltageMeasurements = try container.decode(Int.self, forKey: .numberOfVoltageMeasurements)
+        let samplingFrequency = try container.decode(Double.self, forKey: .samplingFrequency)
+        let voltageMeasurements = try container.decode([Double].self, forKey: .voltageMeasurements)
+        let numberOfVoltageMeasurements = try container.decode(Int.self, forKey: .numberOfVoltageMeasurements)
+
+        // Initialize using memberwise initializer
+        self.init(
+            id: id,
+            startDate: startDate,
+            endDate: endDate,
+            classification: classification,
+            symptomsStatus: symptomsStatus,
+            averageHeartRate: averageHeartRate,
+            samplingFrequency: samplingFrequency,
+            voltageMeasurements: voltageMeasurements,
+            numberOfVoltageMeasurements: numberOfVoltageMeasurements
+        )
     }
 
     func encode(to encoder: Encoder) throws {
