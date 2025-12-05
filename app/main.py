@@ -22,6 +22,51 @@ def root():
 def health():
     return {"status": "ok"}
 
+@app.get("/v1/ecg/test_response")
+def test_response():
+    """Return a sample analysis response for testing iOS app decoding"""
+    return {
+        "recording_id": "test-123",
+        "timestamp_utc": "2025-01-01T00:00:00Z",
+        "features": {
+            "rhythm_classification": "sinus",
+            "rhythm_confidence": 0.9,
+            "heart_rate_bpm": {
+                "mean": 72.0,
+                "min": 60.0,
+                "max": 85.0
+            },
+            "rr_intervals_ms": {
+                "mean": 833.0,
+                "min": 700.0,
+                "max": 1000.0,
+                "coefficient_of_variation": 5.0
+            },
+            "hrv": {
+                "sdnn_ms": 50.0,
+                "rmssd_ms": 42.0
+            },
+            "intervals": {
+                "qrs_duration_ms": 90.0,
+                "qt_interval_ms": 360.0,
+                "qtc_ms": 440.0
+            },
+            "signal_quality": {
+                "overall_quality": "good",
+                "artifact_burden_percent": None
+            },
+            "morphology": {
+                "ectopy_burden_percent": 0.0
+            }
+        },
+        "narrative": {
+            "patient_summary": "ECG analysis shows sinus rhythm with heart rate 72 BPM.",
+            "clinician_notes": "QTc: 440ms, QRS: 90ms. 0 PVCs, 0 PACs detected.",
+            "safety_flags": []
+        },
+        "analyzer_version": "2.0.0"
+    }
+
 # Debug endpoint to log request details
 @app.post("/v1/ecg/analyze/debug")
 def analyze_ecg_debug(request: Request, payload: ECGRequest):
@@ -259,6 +304,16 @@ def analyze_ecg(
     STORE[payload.recording_id] = response
     print(f"[ANALYZE] Response generated successfully for {payload.recording_id}")
     print(f"[ANALYZE] Response keys: {list(response.keys())}")
+
+    # Log the actual JSON that will be sent to help debug iOS decoding issues
+    import json
+    try:
+        response_json = json.dumps(response, indent=2, default=str)
+        print(f"[ANALYZE] Response JSON preview (first 500 chars):")
+        print(response_json[:500])
+    except Exception as e:
+        print(f"[ANALYZE] Could not serialize response to JSON: {e}")
+
     return response
 
 # ---- CSV upload endpoint ----

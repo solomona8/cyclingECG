@@ -134,10 +134,23 @@ class ECGAnalysisService: ObservableObject {
             } catch {
                 print("ERROR: Failed to decode server response: \(error)")
                 if let decodingError = error as? DecodingError {
-                    print("Decoding error details: \(decodingError)")
+                    switch decodingError {
+                    case .keyNotFound(let key, let context):
+                        print("Missing key: \(key.stringValue) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+                    case .typeMismatch(let type, let context):
+                        print("Type mismatch for type: \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+                        print("Expected \(type) but got something else")
+                    case .valueNotFound(let type, let context):
+                        print("Value not found for type: \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+                    case .dataCorrupted(let context):
+                        print("Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+                        print("Debug description: \(context.debugDescription)")
+                    @unknown default:
+                        print("Unknown decoding error: \(decodingError)")
+                    }
                 }
                 await MainActor.run {
-                    analysisError = "Failed to decode server response: \(error.localizedDescription). The server may have returned invalid data."
+                    analysisError = "Failed to decode server response. Check console for details."
                     isAnalyzing = false
                 }
                 return nil
