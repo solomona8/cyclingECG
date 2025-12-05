@@ -9,7 +9,7 @@ import Foundation
 import HealthKit
 
 @MainActor
-class HealthKitManager: ObservableObject {
+final class HealthKitManager: ObservableObject, @unchecked Sendable {
     private let healthStore = HKHealthStore()
 
     @Published var ecgRecordings: [ECGRecording] = []

@@ -156,8 +156,8 @@ struct ECGRecording: Identifiable, Codable {
         let decodedVoltageMeasurements = try container.decode([Double].self, forKey: .voltageMeasurements)
         let decodedNumberOfVoltageMeasurements = try container.decode(Int.self, forKey: .numberOfVoltageMeasurements)
 
-        // Call memberwise initializer
-        self.init(
+        // Use self = Self(...) to satisfy Decodable conformance
+        self = Self(
             id: decodedId,
             startDate: decodedStartDate,
             endDate: decodedEndDate,
