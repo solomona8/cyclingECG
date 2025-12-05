@@ -35,19 +35,14 @@ class FiltersApplied(BaseModel):
     notch_hz: Optional[float] = None
 
 class DeviceInfo(BaseModel):
+    manufacturer: Optional[str] = None
     model: Optional[str] = None
-    os: Optional[str] = None
-    app_version: Optional[str] = None
+    software_version: Optional[str] = None
 
-class ContextInfo(BaseModel):
-    duration_s: Optional[float] = None
-    signal_quality_flag: Optional[str] = Field(default=None, pattern="^(good|moderate|poor)$")
-
-class UserInfo(BaseModel):
-    age: Optional[int] = None
-    sex_at_birth: Optional[str] = None
-    meds: Optional[List[str]] = None
-    history: Optional[List[str]] = None
+class RecordingContext(BaseModel):
+    symptoms: Optional[List[str]] = None
+    activity: Optional[str] = None
+    position: Optional[str] = None
 
 class ECGRequest(BaseModel):
     recording_id: str
@@ -55,38 +50,57 @@ class ECGRequest(BaseModel):
     sampling_rate_hz: float
     units: str
     lead: str
-    start_timestamp_utc: datetime
-    gain: Optional[float] = None
-    adc_bits: Optional[int] = None
-    filters_applied: Optional[FiltersApplied] = None
-    device: Optional[DeviceInfo] = None
-    context: Optional[ContextInfo] = None
-    user: Optional[UserInfo] = None
-    symptoms: Optional[List[str]] = None
-    analyzer_version: Optional[str] = None
+    start_timestamp_utc: str  # iOS sends as ISO8601 string
+    device_info: Optional[DeviceInfo] = None
+    context: Optional[RecordingContext] = None
 
-def fake_analysis(samples: List[float], fs: float) -> Dict[str, Any]:
+def fake_analysis(samples: List[float], fs: float, recording_id: str) -> Dict[str, Any]:
+    """Generate fake analysis results in the format expected by iOS app"""
     n = len(samples)
     mean = sum(samples)/max(n,1)
     mean_hr = 72 + int(mean) % 15
+
+    # Return format matching ECGAnalysisResponse from iOS app
     return {
-        "summary": {
-            "rhythm": "sinus",
+        "recording_id": recording_id,
+        "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+        "features": {
+            "rhythm_classification": "sinus",
             "rhythm_confidence": 0.85,
-            "mean_hr_bpm": mean_hr,
-            "min_hr_bpm": max(40, mean_hr - 8),
-            "max_hr_bpm": min(180, mean_hr + 12),
-            "signal_quality": "good" if n > 200 else "moderate"
+            "heart_rate_bpm": {
+                "mean": float(mean_hr),
+                "min": float(max(40, mean_hr - 8)),
+                "max": float(min(180, mean_hr + 12))
+            },
+            "rr_intervals_ms": {
+                "mean": 800.0,
+                "min": 750.0,
+                "max": 850.0,
+                "coefficient_of_variation": 0.05
+            },
+            "hrv": {
+                "sdnn_ms": 50.0,
+                "rmssd_ms": 42.0
+            },
+            "intervals": {
+                "qrs_duration_ms": 90.0,
+                "qt_interval_ms": 360.0,
+                "qtc_ms": 440.0
+            },
+            "signal_quality": {
+                "overall_quality": "good" if n > 200 else "moderate",
+                "artifact_burden_percent": 2.5
+            },
+            "morphology": {
+                "ectopy_burden_percent": 0.0
+            }
         },
-        "beats": {
-            "r_peaks_ms": [i*800 for i in range(1, min(30, n//int(fs)) + 1)],
-            "rr_ms": [800 for _ in range(min(29, n//int(fs) - 1))],
-            "artifact_mask": []
+        "narrative": {
+            "patient_summary": "Normal sinus rhythm detected with good signal quality. Heart rate is within normal range.",
+            "clinician_notes": "ECG analysis shows regular rhythm with no significant abnormalities detected.",
+            "safety_flags": []
         },
-        "hrv_time": {"sdnn_ms": 50, "rmssd_ms": 42},
-        "intervals": {"qrs_ms": 90, "qt_ms": 360, "qtc_ms_bazett": 440, "uncertainty_ms": 25},
-        "flags": {"pacemaker_detected": False, "ectopy_burden_pct": 0.0, "st_deviation_flag": False},
-        "version": "analyzer-1.0.0"
+        "analyzer_version": "1.0.0"
     }
 
 STORE: Dict[str, Dict[str, Any]] = {}
@@ -109,10 +123,9 @@ def analyze_ecg(payload: ECGRequest, authorization: Optional[str] = Header(None)
         raise HTTPException(status_code=400, detail="lead must be 'I' for Apple Watch")
     if payload.sampling_rate_hz not in {128, 250, 256, 512}:
         raise HTTPException(status_code=400, detail="Unsupported sampling_rate_hz")
-    result = fake_analysis(payload.samples, payload.sampling_rate_hz)
-    resp = {"recording_id": payload.recording_id, **result}
-    STORE[payload.recording_id] = resp
-    return resp
+    result = fake_analysis(payload.samples, payload.sampling_rate_hz, payload.recording_id)
+    STORE[payload.recording_id] = result
+    return result
 
 @app.post("/v1/ecg/upload_csv")
 async def upload_csv(
