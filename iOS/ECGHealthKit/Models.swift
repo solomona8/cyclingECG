@@ -89,11 +89,9 @@ struct ECGRecording: Identifiable, Codable {
             )
         )
     }
-}
 
-// MARK: - ECGRecording Codable Conformance
+    // MARK: - Codable Conformance
 
-extension ECGRecording {
     enum CodingKeys: String, CodingKey {
         case id
         case startDate
@@ -109,42 +107,40 @@ extension ECGRecording {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        let id = try container.decode(String.self, forKey: .id)
-        let startDate = try container.decode(Date.self, forKey: .startDate)
-        let endDate = try container.decode(Date.self, forKey: .endDate)
+        let decodedId = try container.decode(String.self, forKey: .id)
+        let decodedStartDate = try container.decode(Date.self, forKey: .startDate)
+        let decodedEndDate = try container.decode(Date.self, forKey: .endDate)
 
         // Decode classification as raw value
         let classificationRawValue = try container.decode(Int.self, forKey: .classification)
-        let classification = HKElectrocardiogram.Classification(rawValue: classificationRawValue) ?? .notSet
+        let decodedClassification = HKElectrocardiogram.Classification(rawValue: classificationRawValue) ?? .notSet
 
         // Decode symptoms status as raw value
         let symptomsRawValue = try container.decode(Int.self, forKey: .symptomsStatus)
-        let symptomsStatus = HKElectrocardiogram.SymptomsStatus(rawValue: symptomsRawValue) ?? .notSet
+        let decodedSymptomsStatus = HKElectrocardiogram.SymptomsStatus(rawValue: symptomsRawValue) ?? .notSet
 
         // Handle HKQuantity (decode as optional double in BPM)
-        let averageHeartRate: HKQuantity?
+        let decodedAverageHeartRate: HKQuantity?
         if let heartRateBPM = try container.decodeIfPresent(Double.self, forKey: .averageHeartRate) {
-            averageHeartRate = HKQuantity(unit: HKUnit.count().unitDivided(by: .minute()), doubleValue: heartRateBPM)
+            decodedAverageHeartRate = HKQuantity(unit: HKUnit.count().unitDivided(by: .minute()), doubleValue: heartRateBPM)
         } else {
-            averageHeartRate = nil
+            decodedAverageHeartRate = nil
         }
 
-        let samplingFrequency = try container.decode(Double.self, forKey: .samplingFrequency)
-        let voltageMeasurements = try container.decode([Double].self, forKey: .voltageMeasurements)
-        let numberOfVoltageMeasurements = try container.decode(Int.self, forKey: .numberOfVoltageMeasurements)
+        let decodedSamplingFrequency = try container.decode(Double.self, forKey: .samplingFrequency)
+        let decodedVoltageMeasurements = try container.decode([Double].self, forKey: .voltageMeasurements)
+        let decodedNumberOfVoltageMeasurements = try container.decode(Int.self, forKey: .numberOfVoltageMeasurements)
 
-        // Initialize using memberwise initializer
-        self.init(
-            id: id,
-            startDate: startDate,
-            endDate: endDate,
-            classification: classification,
-            symptomsStatus: symptomsStatus,
-            averageHeartRate: averageHeartRate,
-            samplingFrequency: samplingFrequency,
-            voltageMeasurements: voltageMeasurements,
-            numberOfVoltageMeasurements: numberOfVoltageMeasurements
-        )
+        // Initialize properties
+        self.id = decodedId
+        self.startDate = decodedStartDate
+        self.endDate = decodedEndDate
+        self.classification = decodedClassification
+        self.symptomsStatus = decodedSymptomsStatus
+        self.averageHeartRate = decodedAverageHeartRate
+        self.samplingFrequency = decodedSamplingFrequency
+        self.voltageMeasurements = decodedVoltageMeasurements
+        self.numberOfVoltageMeasurements = decodedNumberOfVoltageMeasurements
     }
 
     func encode(to encoder: Encoder) throws {
