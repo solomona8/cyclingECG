@@ -10,7 +10,7 @@ import HealthKit
 
 // MARK: - ECG Recording
 
-struct ECGRecording: Identifiable, Codable {
+struct ECGRecording: Identifiable {
     let id: String
     let startDate: Date
     let endDate: Date
@@ -88,6 +88,75 @@ struct ECGRecording: Identifiable, Codable {
                 position: nil
             )
         )
+    }
+}
+
+// MARK: - ECGRecording Codable Conformance
+
+extension ECGRecording: Codable {
+    enum CodingKeys: String, CodingKey {
+        case id
+        case startDate
+        case endDate
+        case classification
+        case symptomsStatus
+        case averageHeartRate
+        case samplingFrequency
+        case voltageMeasurements
+        case numberOfVoltageMeasurements
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decode(String.self, forKey: .id)
+        startDate = try container.decode(Date.self, forKey: .startDate)
+        endDate = try container.decode(Date.self, forKey: .endDate)
+
+        // Decode classification as raw value
+        let classificationRawValue = try container.decode(Int.self, forKey: .classification)
+        classification = HKElectrocardiogram.Classification(rawValue: classificationRawValue) ?? .notSet
+
+        // Decode symptoms status as raw value
+        let symptomsRawValue = try container.decode(Int.self, forKey: .symptomsStatus)
+        symptomsStatus = HKElectrocardiogram.SymptomsStatus(rawValue: symptomsRawValue) ?? .notSet
+
+        // Handle HKQuantity (decode as optional double in BPM)
+        if let heartRateBPM = try container.decodeIfPresent(Double.self, forKey: .averageHeartRate) {
+            averageHeartRate = HKQuantity(unit: HKUnit.count().unitDivided(by: .minute()), doubleValue: heartRateBPM)
+        } else {
+            averageHeartRate = nil
+        }
+
+        samplingFrequency = try container.decode(Double.self, forKey: .samplingFrequency)
+        voltageMeasurements = try container.decode([Double].self, forKey: .voltageMeasurements)
+        numberOfVoltageMeasurements = try container.decode(Int.self, forKey: .numberOfVoltageMeasurements)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(id, forKey: .id)
+        try container.encode(startDate, forKey: .startDate)
+        try container.encode(endDate, forKey: .endDate)
+
+        // Encode classification as raw value
+        try container.encode(classification.rawValue, forKey: .classification)
+
+        // Encode symptoms status as raw value
+        try container.encode(symptomsStatus.rawValue, forKey: .symptomsStatus)
+
+        // Encode HKQuantity as double in BPM
+        if let heartRate = averageHeartRate {
+            let bpm = heartRate.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
+            try container.encode(bpm, forKey: .averageHeartRate)
+        } else {
+            try container.encodeNil(forKey: .averageHeartRate)
+        }
+
+        try container.encode(samplingFrequency, forKey: .samplingFrequency)
+        try container.encode(voltageMeasurements, forKey: .voltageMeasurements)
+        try container.encode(numberOfVoltageMeasurements, forKey: .numberOfVoltageMeasurements)
     }
 }
 
@@ -174,40 +243,4 @@ struct ECGNarrative: Codable {
     let patient_summary: String?
     let clinician_notes: String?
     let safety_flags: [String]?
-}
-
-// MARK: - Codable Extensions for HKElectrocardiogram enums
-
-extension HKElectrocardiogram.Classification: Codable {
-    enum CodingKeys: String, CodingKey {
-        case rawValue
-    }
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let rawValue = try container.decode(Int.self)
-        self = HKElectrocardiogram.Classification(rawValue: rawValue) ?? .notSet
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(self.rawValue)
-    }
-}
-
-extension HKElectrocardiogram.SymptomsStatus: Codable {
-    enum CodingKeys: String, CodingKey {
-        case rawValue
-    }
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let rawValue = try container.decode(Int.self)
-        self = HKElectrocardiogram.SymptomsStatus(rawValue: rawValue) ?? .notSet
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(self.rawValue)
-    }
 }
