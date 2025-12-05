@@ -10,7 +10,7 @@ import HealthKit
 
 // MARK: - ECG Recording
 
-struct ECGRecording: Identifiable, Codable {
+struct ECGRecording: Identifiable {
     let id: String
     let startDate: Date
     let endDate: Date
@@ -89,34 +89,11 @@ struct ECGRecording: Identifiable, Codable {
             )
         )
     }
+}
 
-    // MARK: - Initializers
+// MARK: - ECGRecording Codable Conformance
 
-    // Memberwise initializer (required since we have custom Decodable init)
-    init(
-        id: String,
-        startDate: Date,
-        endDate: Date,
-        classification: HKElectrocardiogram.Classification,
-        symptomsStatus: HKElectrocardiogram.SymptomsStatus,
-        averageHeartRate: HKQuantity?,
-        samplingFrequency: Double,
-        voltageMeasurements: [Double],
-        numberOfVoltageMeasurements: Int
-    ) {
-        self.id = id
-        self.startDate = startDate
-        self.endDate = endDate
-        self.classification = classification
-        self.symptomsStatus = symptomsStatus
-        self.averageHeartRate = averageHeartRate
-        self.samplingFrequency = samplingFrequency
-        self.voltageMeasurements = voltageMeasurements
-        self.numberOfVoltageMeasurements = numberOfVoltageMeasurements
-    }
-
-    // MARK: - Codable Conformance
-
+extension ECGRecording: Codable {
     enum CodingKeys: String, CodingKey {
         case id
         case startDate
@@ -156,18 +133,16 @@ struct ECGRecording: Identifiable, Codable {
         let decodedVoltageMeasurements = try container.decode([Double].self, forKey: .voltageMeasurements)
         let decodedNumberOfVoltageMeasurements = try container.decode(Int.self, forKey: .numberOfVoltageMeasurements)
 
-        // Use self = Self(...) to satisfy Decodable conformance
-        self = Self(
-            id: decodedId,
-            startDate: decodedStartDate,
-            endDate: decodedEndDate,
-            classification: decodedClassification,
-            symptomsStatus: decodedSymptomsStatus,
-            averageHeartRate: decodedAverageHeartRate,
-            samplingFrequency: decodedSamplingFrequency,
-            voltageMeasurements: decodedVoltageMeasurements,
-            numberOfVoltageMeasurements: decodedNumberOfVoltageMeasurements
-        )
+        // Initialize all stored properties
+        self.id = decodedId
+        self.startDate = decodedStartDate
+        self.endDate = decodedEndDate
+        self.classification = decodedClassification
+        self.symptomsStatus = decodedSymptomsStatus
+        self.averageHeartRate = decodedAverageHeartRate
+        self.samplingFrequency = decodedSamplingFrequency
+        self.voltageMeasurements = decodedVoltageMeasurements
+        self.numberOfVoltageMeasurements = decodedNumberOfVoltageMeasurements
     }
 
     func encode(to encoder: Encoder) throws {
