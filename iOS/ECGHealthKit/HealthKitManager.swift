@@ -9,7 +9,7 @@ import Foundation
 import HealthKit
 
 @MainActor
-final class HealthKitManager: ObservableObject, @unchecked Sendable {
+final class HealthKitManager: ObservableObject {
     private let healthStore = HKHealthStore()
 
     @Published var ecgRecordings: [ECGRecording] = []
@@ -83,23 +83,25 @@ final class HealthKitManager: ObservableObject, @unchecked Sendable {
                 return
             }
 
-            Task { @MainActor [weak self] in
-                guard let self = self else { return }
-
-                // Extract recordings sequentially
-                var recordings: [ECGRecording] = []
-                for ecgSample in ecgSamples {
-                    if let recording = await self.extractECGData(from: ecgSample) {
-                        recordings.append(recording)
-                    }
-                }
-
-                self.ecgRecordings = recordings
-                self.isLoading = false
+            Task { @MainActor in
+                await self?.processECGSamples(ecgSamples)
             }
         }
 
         healthStore.execute(query)
+    }
+
+    private func processECGSamples(_ ecgSamples: [HKElectrocardiogram]) async {
+        // Extract recordings sequentially
+        var recordings: [ECGRecording] = []
+        for ecgSample in ecgSamples {
+            if let recording = await extractECGData(from: ecgSample) {
+                recordings.append(recording)
+            }
+        }
+
+        self.ecgRecordings = recordings
+        self.isLoading = false
     }
 
     // MARK: - Extract ECG Data

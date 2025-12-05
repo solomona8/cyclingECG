@@ -10,7 +10,7 @@ import HealthKit
 
 // MARK: - ECG Recording
 
-struct ECGRecording: Identifiable {
+struct ECGRecording: Identifiable, Codable {
     let id: String
     let startDate: Date
     let endDate: Date
@@ -93,7 +93,7 @@ struct ECGRecording: Identifiable {
 
 // MARK: - ECGRecording Codable Conformance
 
-extension ECGRecording: Codable {
+extension ECGRecording {
     enum CodingKeys: String, CodingKey {
         case id
         case startDate
