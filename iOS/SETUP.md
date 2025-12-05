@@ -1,43 +1,35 @@
 # Quick Xcode Setup Guide
 
-## Files You Need
+## Getting Started
 
-All files are in: `/home/user/cyclingECG/iOS/ECGHealthKit/`
+The iOS app now includes a complete Xcode project! No need to manually create one.
 
-### Swift Source Files (Add to Xcode):
-- ECGHealthKitApp.swift
-- ContentView.swift
-- HealthKitManager.swift
-- Models.swift
-- ECGAnalysisService.swift
-- ExportManager.swift
-- ECGListView.swift
-- ECGDetailView.swift
+### 1. Open the Project
 
-### Configuration Files:
-- Info.plist (merge with yours or use as reference)
-- ECGHealthKit.entitlements (add to project)
-
-## Minimum Info.plist Additions
-
-Add these two keys to your Info.plist:
-
-```xml
-<key>NSHealthShareUsageDescription</key>
-<string>This app needs access to your ECG recordings from Apple Watch to analyze and export them.</string>
-
-<key>UIRequiredDeviceCapabilities</key>
-<array>
-    <string>healthkit</string>
-</array>
+```bash
+cd cyclingECG/iOS
+open ECGHealthKit.xcodeproj
 ```
 
-## Required Capability
+Or in Xcode:
+- File → Open
+- Navigate to `iOS/ECGHealthKit.xcodeproj`
+- Click Open
+
+### 2. Configure Signing
 
 In Xcode:
-1. Select project → Target → Signing & Capabilities
-2. Click "+ Capability"
-3. Add "HealthKit"
+1. Select the project in the navigator
+2. Select the "ECGHealthKit" target
+3. Go to "Signing & Capabilities" tab
+4. Select your development team from the dropdown
+
+The project already includes:
+- ✅ All Swift source files
+- ✅ HealthKit capability configured
+- ✅ Info.plist with required permissions
+- ✅ Entitlements file
+- ✅ Asset catalog
 
 ## Testing Requirements
 
@@ -46,14 +38,30 @@ In Xcode:
 - Take at least one ECG on Apple Watch first
 - For backend connection, use local IP address (e.g., 192.168.1.100:8000)
 
-## Backend Setup
+### 3. Build and Run
 
-Start your backend:
+1. Connect your iPhone via USB
+2. Select your iPhone from the device dropdown in Xcode
+3. Click the Play button (⌘R) to build and run
+
+## Backend Setup (Optional)
+
+To enable ECG analysis features, start the backend:
+
 ```bash
-cd /home/user/cyclingECG
+cd cyclingECG
 uvicorn app.main:app --reload --host 0.0.0.0
 ```
 
-In app Settings:
+Then in the app's Settings (⚙️ icon):
 - API URL: http://YOUR_LOCAL_IP:8000
 - API Key: (if you set API_KEY env var)
+
+Find your local IP:
+```bash
+# macOS
+ifconfig | grep "inet " | grep -v 127.0.0.1
+
+# Linux
+ip addr show | grep "inet " | grep -v 127.0.0.1
+```

@@ -53,56 +53,22 @@ cd cyclingECG/iOS
 
 1. Open Xcode
 2. Select **File > Open**
-3. Navigate to the `iOS/ECGHealthKit` directory
-4. Create a new Xcode project or add the files to an existing project
+3. Navigate to `iOS/ECGHealthKit.xcodeproj`
+4. Double-click to open the project
 
-### 3. Project Setup
-
-#### Create a New Xcode Project
-
-1. **File > New > Project**
-2. Choose **iOS > App**
-3. Set the following:
-   - **Product Name**: ECGHealthKit
-   - **Interface**: SwiftUI
-   - **Language**: Swift
-   - **Bundle Identifier**: com.yourcompany.ECGHealthKit (change as needed)
-
-4. Add all the Swift files:
-   - ECGHealthKitApp.swift
-   - ContentView.swift
-   - HealthKitManager.swift
-   - Models.swift
-   - ECGAnalysisService.swift
-   - ExportManager.swift
-   - ECGListView.swift
-   - ECGDetailView.swift
-
-#### Configure Capabilities
-
-1. Select your project in the navigator
-2. Select your target
-3. Go to **Signing & Capabilities**
-4. Click **+ Capability** and add:
-   - **HealthKit**
-
-5. Add the **ECGHealthKit.entitlements** file to your project
-
-#### Configure Info.plist
-
-1. Add the **Info.plist** file or merge its contents with your existing one
-2. Ensure these keys are present:
-   - `NSHealthShareUsageDescription`: Explains why the app needs HealthKit access
-   - `NSHealthClinicalHealthRecordsShareUsageDescription`: For health records
-   - `UIRequiredDeviceCapabilities`: Includes "healthkit"
-
-### 4. Code Signing
+### 3. Configure Code Signing
 
 1. Select your development team in **Signing & Capabilities**
 2. Ensure your Apple ID has HealthKit entitlements
 3. Note: HealthKit apps require a real device for testing (won't work in Simulator)
 
-### 5. Backend Setup (Optional)
+The project is already configured with:
+- ✅ HealthKit capability enabled
+- ✅ All Swift source files added
+- ✅ Info.plist with required HealthKit permissions
+- ✅ Entitlements file configured
+
+### 4. Backend Setup (Optional)
 
 If you want to use the analysis features:
 
