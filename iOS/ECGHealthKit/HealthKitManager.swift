@@ -10,7 +10,7 @@ import HealthKit
 
 @MainActor
 final class HealthKitManager: ObservableObject {
-    private let healthStore = HKHealthStore()
+    nonisolated(unsafe) private let healthStore = HKHealthStore()
 
     @Published var ecgRecordings: [ECGRecording] = []
     @Published var isAuthorized = false
@@ -58,37 +58,41 @@ final class HealthKitManager: ObservableObject {
     func fetchECGRecordings() async {
         isLoading = true
 
-        let ecgType = HKObjectType.electrocardiogramType()
-        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
-
-        let query = HKSampleQuery(
-            sampleType: ecgType,
-            predicate: nil,
-            limit: HKObjectQueryNoLimit,
-            sortDescriptors: [sortDescriptor]
-        ) { query, samples, error in
-
-            if let error = error {
-                Task { @MainActor [weak self] in
-                    self?.authorizationError = "Error fetching ECGs: \(error.localizedDescription)"
-                    self?.isLoading = false
-                }
-                return
-            }
-
-            guard let ecgSamples = samples as? [HKElectrocardiogram] else {
-                Task { @MainActor [weak self] in
-                    self?.isLoading = false
-                }
-                return
-            }
-
-            Task { @MainActor in
-                await self?.processECGSamples(ecgSamples)
-            }
+        do {
+            let ecgSamples = try await queryECGSamples()
+            await processECGSamples(ecgSamples)
+        } catch {
+            authorizationError = "Error fetching ECGs: \(error.localizedDescription)"
+            isLoading = false
         }
+    }
 
-        healthStore.execute(query)
+    nonisolated private func queryECGSamples() async throws -> [HKElectrocardiogram] {
+        return try await withCheckedThrowingContinuation { continuation in
+            let ecgType = HKObjectType.electrocardiogramType()
+            let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+
+            let query = HKSampleQuery(
+                sampleType: ecgType,
+                predicate: nil,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sortDescriptor]
+            ) { query, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let ecgSamples = samples as? [HKElectrocardiogram] else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                continuation.resume(returning: ecgSamples)
+            }
+
+            healthStore.execute(query)
+        }
     }
 
     private func processECGSamples(_ ecgSamples: [HKElectrocardiogram]) async {
