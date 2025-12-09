@@ -128,6 +128,11 @@ final class HealthKitManager: ObservableObject {
                     if let voltageQuantity = measurement.quantity(for: .appleWatchSimilarToLeadI) {
                         let voltage = voltageQuantity.doubleValue(for: HKUnit.volt())
                         voltageMeasurements.append(voltage)
+
+                        // Log first few samples to verify real ECG data
+                        if voltageMeasurements.count <= 5 || voltageMeasurements.count % 1000 == 0 {
+                            print("[HEALTHKIT] Sample \(voltageMeasurements.count): \(voltage) V")
+                        }
                     } else {
                         // This is important - if we can't get voltage, log it
                         print("WARNING: Could not extract voltage from measurement")
@@ -144,6 +149,32 @@ final class HealthKitManager: ObservableObject {
                     print("- Extracted \(voltageMeasurements.count) voltage measurements")
                     print("- Expected \(ecg.numberOfVoltageMeasurements) measurements")
                     print("- Sampling frequency: \(samplingFrequency) Hz")
+
+                    // Calculate statistics to detect test data
+                    if !voltageMeasurements.isEmpty {
+                        let minVoltage = voltageMeasurements.min() ?? 0
+                        let maxVoltage = voltageMeasurements.max() ?? 0
+                        let meanVoltage = voltageMeasurements.reduce(0.0, +) / Double(voltageMeasurements.count)
+                        print("[HEALTHKIT] Voltage stats (Volts):")
+                        print("  - Min: \(minVoltage)")
+                        print("  - Max: \(maxVoltage)")
+                        print("  - Mean: \(meanVoltage)")
+                        print("  - First 5 samples: \(voltageMeasurements.prefix(5))")
+                        print("  - Last 5 samples: \(voltageMeasurements.suffix(5))")
+
+                        // Check for linear ramp pattern (test data indicator)
+                        if voltageMeasurements.count >= 10 {
+                            let diffs = zip(voltageMeasurements.dropFirst(), voltageMeasurements).map { $0.0 - $0.1 }
+                            let avgDiff = diffs.reduce(0.0, +) / Double(diffs.count)
+                            let diffStd = sqrt(diffs.map { pow($0 - avgDiff, 2) }.reduce(0.0, +) / Double(diffs.count))
+                            print("  - Average increment: \(avgDiff) V")
+                            print("  - Increment std dev: \(diffStd) V")
+                            if diffStd < abs(avgDiff) * 0.01 {
+                                print("  ⚠️ WARNING: Data appears to be a linear ramp (test data?)")
+                            }
+                        }
+                    }
+
                     print("=== END EXTRACTION ===")
 
                     if voltageMeasurements.isEmpty {

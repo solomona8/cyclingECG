@@ -229,6 +229,24 @@ def analyze_ecg(
         print(f"[ANALYZE] Last 10 samples: {samples_array[-10:].tolist()}")
         print(f"[ANALYZE] Non-zero samples: {np.count_nonzero(samples_array)} / {len(samples_array)}")
 
+        # Check for linear ramp pattern (test data indicator)
+        if len(samples_array) >= 10:
+            diffs = np.diff(samples_array)
+            avg_diff = np.mean(diffs)
+            diff_std = np.std(diffs)
+            print(f"[ANALYZE] Sample increments - mean: {avg_diff:.9f}, std: {diff_std:.9f}")
+            if diff_std < abs(avg_diff) * 0.01 and avg_diff > 0:
+                print(f"[ANALYZE] ⚠️ WARNING: Data appears to be a LINEAR RAMP (test data, not real ECG)")
+                print(f"[ANALYZE] ⚠️ Real ECG data should have variable increments, not constant!")
+
+        # Check for realistic ECG amplitude (in microvolts, typical range 500-3000 uV)
+        if payload.units == "uV":
+            if samples_array.max() < 100 or samples_array.max() > 50000:
+                print(f"[ANALYZE] ⚠️ WARNING: Amplitude unusual for ECG in uV: {samples_array.max():.1f}")
+        elif payload.units == "mV":
+            if samples_array.max() < 0.1 or samples_array.max() > 50:
+                print(f"[ANALYZE] ⚠️ WARNING: Amplitude unusual for ECG in mV: {samples_array.max():.1f}")
+
         features = _extract_features(payload.samples, payload.sampling_rate_hz)
         print(f"[ANALYZE] Feature extraction successful, detected {features.get('beat_count', 0)} beats")
     except Exception as e:

@@ -70,6 +70,18 @@ struct ECGRecording: Identifiable {
         // Convert voltage measurements from volts to microvolts
         let samplesInMicrovolts = voltageMeasurements.map { $0 * 1_000_000 }
 
+        // Log conversion for debugging
+        print("[API_REQUEST] Converting \(voltageMeasurements.count) samples from Volts to microvolts")
+        if voltageMeasurements.count >= 5 {
+            print("[API_REQUEST] Original (V): \(voltageMeasurements.prefix(5))")
+            print("[API_REQUEST] Converted (uV): \(samplesInMicrovolts.prefix(5))")
+        }
+        if let min = samplesInMicrovolts.min(), let max = samplesInMicrovolts.max() {
+            let mean = samplesInMicrovolts.reduce(0.0, +) / Double(samplesInMicrovolts.count)
+            print("[API_REQUEST] Microvolts stats - min: \(min), max: \(max), mean: \(mean)")
+        }
+        print("[API_REQUEST] Units being sent: uV")
+
         return ECGAnalysisRequest(
             recording_id: id,
             samples: samplesInMicrovolts,
