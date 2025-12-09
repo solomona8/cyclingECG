@@ -5,7 +5,7 @@
 
 set -e  # Exit on error
 
-PROJECT_DIR="/home/user/cyclingECG"
+PROJECT_DIR="/Users/aaronsolomon/Documents/LocalCode/cyclingECG"
 VENV_DIR="$PROJECT_DIR/.venv"
 
 echo "🚀 cyclingECG Setup Script"

@@ -12,7 +12,7 @@ You were trying to run commands from your home directory (`~`) instead of the pr
 
 1. **Navigate to the project directory:**
    ```bash
-   cd /home/user/cyclingECG
+   cd /Users/aaronsolomon/Documents/LocalCode/cyclingECG
    ```
 
 2. **Run the setup script:**
@@ -42,7 +42,7 @@ If you prefer to do it manually:
 
 ```bash
 # 1. Navigate to project
-cd /home/user/cyclingECG
+cd /Users/aaronsolomon/Documents/LocalCode/cyclingECG
 
 # 2. Activate virtual environment
 source .venv/bin/activate
@@ -66,10 +66,10 @@ chmod +x setup.sh start_server.sh
 **Solution**: You forgot to activate the virtual environment or install dependencies. Run `./setup.sh`
 
 **Issue**: `requirements.txt not found`
-**Solution**: You're in the wrong directory. Navigate to `/home/user/cyclingECG` first
+**Solution**: You're in the wrong directory. Navigate to `/Users/aaronsolomon/Documents/LocalCode/cyclingECG` first
 
 ### Development Tips
 
-- Always run commands from the project directory `/home/user/cyclingECG`
+- Always run commands from the project directory `/Users/aaronsolomon/Documents/LocalCode/cyclingECG`
 - Keep your virtual environment activated when working
 - Use `--reload` flag with uvicorn for development (already included in start_server.sh)
