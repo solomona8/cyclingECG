@@ -453,11 +453,17 @@ async def upload_csv(
         raise HTTPException(status_code=400, detail="CSV appears empty")
 
     header_like = any(not _is_float(c) for c in rows[0])
+    header_row = rows[0] if header_like else None
     data_rows = rows[1:] if header_like else rows
 
-    col_idx = _choose_numeric_column(data_rows)
+    # Smart column selection for ECG data
+    col_idx = _choose_voltage_column(data_rows, header_row)
     if col_idx is None:
-        raise HTTPException(status_code=400, detail="No numeric column found in CSV")
+        raise HTTPException(status_code=400, detail="No voltage column found in CSV")
+
+    print(f"[CSV_UPLOAD] Selected column {col_idx} for voltage data")
+    if header_row and col_idx < len(header_row):
+        print(f"[CSV_UPLOAD] Column header: '{header_row[col_idx]}'")
 
     samples: List[float] = []
     for r in data_rows:
@@ -568,6 +574,85 @@ def _is_float(s: str) -> bool:
         return True
     except Exception:
         return False
+
+def _choose_voltage_column(data_rows: List[List[str]], header_row: Optional[List[str]] = None) -> Optional[int]:
+    """
+    Smart column selection for ECG voltage data.
+
+    Avoids selecting timestamp columns (which look like linear ramps).
+    Prefers columns with headers containing "voltage", "volt", "ecg", "mv", "uv".
+    Falls back to rightmost numeric column (standard for time-series: time, value).
+    """
+    import numpy as np
+
+    if not data_rows:
+        return None
+
+    n_cols = max(len(r) for r in data_rows)
+
+    # Strategy 1: Check header for voltage-related keywords
+    if header_row:
+        voltage_keywords = ['voltage', 'volt', 'ecg', 'mv', 'uv', 'microvolt', 'millivolt']
+        for col_idx in range(min(n_cols, len(header_row))):
+            header_text = header_row[col_idx].lower()
+            if any(keyword in header_text for keyword in voltage_keywords):
+                # Verify this column is actually numeric
+                numeric_count = sum(1 for r in data_rows if col_idx < len(r) and _is_float(r[col_idx].strip()))
+                if numeric_count >= len(data_rows) // 2:
+                    print(f"[CSV_PARSE] Selected column {col_idx} based on header '{header_row[col_idx]}'")
+                    return col_idx
+
+    # Strategy 2: Identify and exclude timestamp columns
+    # Timestamps are monotonically increasing from near 0 with very uniform increments
+    candidate_columns = []
+
+    for col_idx in range(n_cols):
+        values = []
+        for r in data_rows[:min(100, len(data_rows))]:  # Sample first 100 rows
+            if col_idx < len(r) and _is_float(r[col_idx].strip()):
+                try:
+                    values.append(float(r[col_idx].strip()))
+                except:
+                    continue
+
+        if len(values) < 10:
+            continue  # Not enough numeric values
+
+        values_arr = np.array(values)
+
+        # Check if this looks like a timestamp column:
+        # 1. Starts near zero
+        # 2. Monotonically increasing
+        # 3. Very uniform increments (low coefficient of variation in diffs)
+
+        is_monotonic = all(values_arr[i] <= values_arr[i+1] for i in range(len(values_arr)-1))
+        starts_near_zero = values_arr[0] < 1.0  # Timestamps usually start at 0
+
+        if is_monotonic and starts_near_zero and len(values) > 2:
+            diffs = np.diff(values_arr)
+            if len(diffs) > 0 and np.mean(diffs) > 0:
+                # Coefficient of variation in increments
+                cv = np.std(diffs) / np.mean(diffs) if np.mean(diffs) > 0 else 0
+
+                # Timestamps have very uniform increments (CV < 0.01)
+                # Real ECG data has variable increments (CV > 0.1)
+                if cv < 0.01:
+                    print(f"[CSV_PARSE] Column {col_idx} appears to be timestamps (CV={cv:.6f}), skipping")
+                    continue
+
+        # This column passed the timestamp filter
+        candidate_columns.append(col_idx)
+
+    # Strategy 3: Among candidates, prefer the rightmost column
+    # (Standard CSV format: time,voltage or index,voltage)
+    if candidate_columns:
+        selected = max(candidate_columns)  # Rightmost
+        print(f"[CSV_PARSE] Selected column {selected} from candidates {candidate_columns}")
+        return selected
+
+    # Strategy 4: Fallback to old behavior if no candidates
+    print("[CSV_PARSE] No clear voltage column found, using fallback")
+    return _choose_numeric_column(data_rows)
 
 def _choose_numeric_column(rows: List[List[str]]) -> Optional[int]:
     if not rows:
