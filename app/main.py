@@ -13,6 +13,50 @@ except Exception:
 
 app = FastAPI(title="ECG Analyzer", version="1.0.0")
 
+# ---- config & models ----
+API_KEY = os.environ.get("API_KEY")  # no default; auth is disabled if unset
+
+class FiltersApplied(BaseModel):
+    highpass_hz: Optional[float] = None
+    lowpass_hz: Optional[float] = None
+    notch_hz: Optional[float] = None
+
+class DeviceInfo(BaseModel):
+    manufacturer: Optional[str] = None
+    model: Optional[str] = None
+    software_version: Optional[str] = None
+    os: Optional[str] = None
+    app_version: Optional[str] = None
+
+class RecordingContext(BaseModel):
+    symptoms: Optional[List[str]] = None
+    activity: Optional[str] = None
+    position: Optional[str] = None
+    duration_s: Optional[float] = None
+    signal_quality_flag: Optional[str] = Field(default=None, pattern="^(good|moderate|poor)$")
+
+class UserInfo(BaseModel):
+    age: Optional[int] = None
+    sex_at_birth: Optional[str] = None
+    meds: Optional[List[str]] = None
+    history: Optional[List[str]] = None
+
+class ECGRequest(BaseModel):
+    recording_id: str
+    samples: List[float] = Field(min_items=100)
+    sampling_rate_hz: float
+    units: str
+    lead: str
+    start_timestamp_utc: str  # Accept as string to match iOS app
+    gain: Optional[float] = None
+    adc_bits: Optional[int] = None
+    filters_applied: Optional[FiltersApplied] = None
+    device_info: Optional[DeviceInfo] = None  # Changed from 'device'
+    context: Optional[RecordingContext] = None  # Changed to RecordingContext
+    user: Optional[UserInfo] = None
+    symptoms: Optional[List[str]] = None
+    analyzer_version: Optional[str] = None
+
 # ---- public routes (no auth) ----
 @app.get("/")
 def root():
@@ -90,50 +134,6 @@ def analyze_ecg_debug(request: Request, payload: ECGRequest):
     print(json.dumps(debug_info, indent=2))
     print("=== END DEBUG ===")
     return debug_info
-
-# ---- config & models ----
-API_KEY = os.environ.get("API_KEY")  # no default; auth is disabled if unset
-
-class FiltersApplied(BaseModel):
-    highpass_hz: Optional[float] = None
-    lowpass_hz: Optional[float] = None
-    notch_hz: Optional[float] = None
-
-class DeviceInfo(BaseModel):
-    manufacturer: Optional[str] = None
-    model: Optional[str] = None
-    software_version: Optional[str] = None
-    os: Optional[str] = None
-    app_version: Optional[str] = None
-
-class RecordingContext(BaseModel):
-    symptoms: Optional[List[str]] = None
-    activity: Optional[str] = None
-    position: Optional[str] = None
-    duration_s: Optional[float] = None
-    signal_quality_flag: Optional[str] = Field(default=None, pattern="^(good|moderate|poor)$")
-
-class UserInfo(BaseModel):
-    age: Optional[int] = None
-    sex_at_birth: Optional[str] = None
-    meds: Optional[List[str]] = None
-    history: Optional[List[str]] = None
-
-class ECGRequest(BaseModel):
-    recording_id: str
-    samples: List[float] = Field(min_items=100)
-    sampling_rate_hz: float
-    units: str
-    lead: str
-    start_timestamp_utc: str  # Accept as string to match iOS app
-    gain: Optional[float] = None
-    adc_bits: Optional[int] = None
-    filters_applied: Optional[FiltersApplied] = None
-    device_info: Optional[DeviceInfo] = None  # Changed from 'device'
-    context: Optional[RecordingContext] = None  # Changed to RecordingContext
-    user: Optional[UserInfo] = None
-    symptoms: Optional[List[str]] = None
-    analyzer_version: Optional[str] = None
 
 # ---- auth (works with the padlock in /docs) ----
 auth_scheme = HTTPBearer(auto_error=False)
