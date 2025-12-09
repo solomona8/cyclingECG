@@ -21,16 +21,22 @@ def extract_features(samples: List[float], fs: float) -> Dict[str, Any]:
 
     x = np.asarray(samples, dtype=float)
     n = len(x)
+    print(f"[FEATURE_EXTRACT] Input signal: n={n}, min={x.min():.6f}, max={x.max():.6f}, mean={x.mean():.6f}, std={x.std():.6f}")
+
     if n < max(30, int(2 * fs)):
+        print(f"[FEATURE_EXTRACT] Signal too short: {n} < {max(30, int(2 * fs))}")
         return _fallback_no_beats(n, fs)
 
     # 1) Preprocessing: detrend, normalize, filter
     x = _preprocess_signal(x, fs)
+    print(f"[FEATURE_EXTRACT] After preprocessing: min={x.min():.6f}, max={x.max():.6f}, mean={x.mean():.6f}, std={x.std():.6f}")
 
     # 2) R-peak detection
     r_peaks = _detect_r_peaks(x, fs)
+    print(f"[FEATURE_EXTRACT] R-peaks detected: {len(r_peaks)} peaks at indices {r_peaks[:10] if len(r_peaks) > 0 else 'none'}")
 
     if len(r_peaks) < 2:
+        print(f"[FEATURE_EXTRACT] Too few R-peaks ({len(r_peaks)} < 2), returning fallback")
         return _fallback_no_beats(n, fs)
 
     r_peaks = np.asarray(r_peaks, dtype=int)
@@ -159,20 +165,31 @@ def _detect_r_peaks(x: np.ndarray, fs: float) -> List[int]:
     win = max(3, int(0.15 * fs))
     mwi = _moving_average(energy, win)
 
+    print(f"[R_PEAK_DETECT] Energy: max={energy.max():.6f}, mean={energy.mean():.6f}")
+    print(f"[R_PEAK_DETECT] MWI: max={mwi.max():.6f}, median={np.median(mwi):.6f}, p95={np.percentile(mwi, 95):.6f}")
+
     # Adaptive threshold
     baseline = np.median(mwi) + 0.5 * (np.percentile(mwi, 95) - np.median(mwi))
     thr = max(baseline, np.mean(mwi) + 0.5 * np.std(mwi))
 
+    print(f"[R_PEAK_DETECT] Primary threshold: {thr:.6f}")
+
     # Find candidate crossings
     refractory = int(0.30 * fs)  # 300 ms
     cand_idx = np.where(mwi > thr)[0]
+    print(f"[R_PEAK_DETECT] Candidates above primary threshold: {len(cand_idx)}")
+
     r_peaks = _select_peaks(cand_idx, x, refractory)
+    print(f"[R_PEAK_DETECT] Peaks after refractory filtering: {len(r_peaks)}")
 
     # If none found, relax threshold
     if len(r_peaks) < 1:
         thr2 = np.median(mwi) + 0.25 * (np.percentile(mwi, 95) - np.median(mwi))
+        print(f"[R_PEAK_DETECT] Trying fallback threshold: {thr2:.6f}")
         cand_idx = np.where(mwi > thr2)[0]
+        print(f"[R_PEAK_DETECT] Candidates above fallback threshold: {len(cand_idx)}")
         r_peaks = _select_peaks(cand_idx, x, refractory)
+        print(f"[R_PEAK_DETECT] Peaks after refractory filtering (fallback): {len(r_peaks)}")
 
     return r_peaks
 

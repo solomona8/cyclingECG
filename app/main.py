@@ -220,7 +220,15 @@ def analyze_ecg(
 
     # Use real feature extractor
     try:
+        import numpy as np
+        samples_array = np.array(payload.samples, dtype=float)
         print(f"[ANALYZE] Processing recording_id={payload.recording_id}, samples={len(payload.samples)}, fs={payload.sampling_rate_hz}")
+        print(f"[ANALYZE] Units: {payload.units}, Lead: {payload.lead}")
+        print(f"[ANALYZE] Sample stats - min: {samples_array.min():.6f}, max: {samples_array.max():.6f}, mean: {samples_array.mean():.6f}, std: {samples_array.std():.6f}")
+        print(f"[ANALYZE] First 10 samples: {samples_array[:10].tolist()}")
+        print(f"[ANALYZE] Last 10 samples: {samples_array[-10:].tolist()}")
+        print(f"[ANALYZE] Non-zero samples: {np.count_nonzero(samples_array)} / {len(samples_array)}")
+
         features = _extract_features(payload.samples, payload.sampling_rate_hz)
         print(f"[ANALYZE] Feature extraction successful, detected {features.get('beat_count', 0)} beats")
     except Exception as e:
