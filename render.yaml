@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: cycling-ecg-api
+    env: python
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: API_KEY
+        sync: false
+        # Optional: Set this in Render dashboard for API authentication
+      - key: OPENAI_API_KEY
+        sync: false
+        # Optional: Set this in Render dashboard for AI narrative generation
+      - key: OPENAI_MODEL
+        value: gpt-4-turbo
+        # Optional: OpenAI model for narrative generation
+    healthCheckPath: /health
+    autoDeploy: true
