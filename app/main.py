@@ -66,6 +66,89 @@ def root():
 def health():
     return {"status": "ok"}
 
+@app.get("/v1/ecg/generate_test_data")
+def generate_test_data(
+    duration_sec: int = 10,
+    sampling_rate_hz: int = 512,
+    heart_rate_bpm: int = 72
+):
+    """
+    Generate realistic synthetic ECG test data for testing.
+
+    This endpoint generates proper ECG waveforms with P waves, QRS complexes, and T waves.
+    Use this instead of linear ramps for realistic testing!
+
+    Parameters:
+    - duration_sec: Duration in seconds (1-30)
+    - sampling_rate_hz: Sample rate (128, 256, or 512 Hz)
+    - heart_rate_bpm: Heart rate (40-180 bpm)
+
+    Returns: Array of voltage samples in mV
+    """
+    import numpy as np
+
+    # Validate parameters
+    if not (1 <= duration_sec <= 30):
+        raise HTTPException(status_code=400, detail="duration_sec must be 1-30")
+    if sampling_rate_hz not in {128, 256, 512}:
+        raise HTTPException(status_code=400, detail="sampling_rate_hz must be 128, 256, or 512")
+    if not (40 <= heart_rate_bpm <= 180):
+        raise HTTPException(status_code=400, detail="heart_rate_bpm must be 40-180")
+
+    # Generate realistic ECG
+    n_samples = int(duration_sec * sampling_rate_hz)
+    rr_sec = 60.0 / heart_rate_bpm
+
+    # Generate beat times with HRV
+    beat_times = []
+    current_time = 0.3
+    while current_time < duration_sec:
+        beat_times.append(current_time)
+        current_time += rr_sec + np.random.normal(0, 0.02)
+
+    # Initialize with baseline noise
+    ecg = np.random.normal(0, 0.05, n_samples)
+
+    # Add cardiac waveforms
+    for beat_time in beat_times:
+        beat_idx = int(beat_time * sampling_rate_hz)
+
+        # QRS complex (20 samples width at 512 Hz, scaled for other rates)
+        qrs_width = int(20 * sampling_rate_hz / 512)
+        if beat_idx + qrs_width < n_samples:
+            # Q wave (small negative deflection)
+            q_width = max(1, qrs_width // 4)
+            ecg[beat_idx:beat_idx+q_width] -= 0.2
+
+            # R wave (large positive deflection)
+            r_width = max(1, qrs_width // 2)
+            ecg[beat_idx+q_width:beat_idx+q_width+r_width] += 1.0
+
+            # S wave (negative deflection)
+            ecg[beat_idx+q_width+r_width:beat_idx+qrs_width] -= 0.3
+
+        # P wave (before QRS)
+        p_idx = beat_idx - int(40 * sampling_rate_hz / 512)
+        p_width = int(15 * sampling_rate_hz / 512)
+        if p_idx > 0 and p_idx + p_width < n_samples:
+            ecg[p_idx:p_idx+p_width] += 0.15
+
+        # T wave (after QRS)
+        t_idx = beat_idx + qrs_width + int(60 * sampling_rate_hz / 512)
+        t_width = int(30 * sampling_rate_hz / 512)
+        if t_idx + t_width < n_samples:
+            ecg[t_idx:t_idx+t_width] += 0.25
+
+    return {
+        "samples": ecg.tolist(),
+        "sampling_rate_hz": sampling_rate_hz,
+        "duration_sec": duration_sec,
+        "heart_rate_bpm": heart_rate_bpm,
+        "num_samples": len(ecg),
+        "units": "mV",
+        "note": "This is realistic synthetic ECG data with P waves, QRS complexes, and T waves. NOT a linear ramp!"
+    }
+
 @app.get("/v1/ecg/test_response")
 def test_response():
     """Return a sample analysis response for testing iOS app decoding"""

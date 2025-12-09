@@ -370,47 +370,181 @@ export default ECGAnalyzer;
 
 ### Sample Test Data
 
-Use this sample ECG data for testing (simulated normal sinus rhythm):
+**⚠️ CRITICAL: DO NOT USE LINEAR RAMPS FOR ECG DATA!**
+
+If your ECG data looks like `[0, 1, 2, 3, ...]` or any constant increment pattern, the analysis will fail because the bandpass filter removes DC components. You need **realistic waveforms** with P waves, QRS complexes, and T waves.
+
+#### Option 1: Use the Backend Test Data Generator (Recommended)
+
+The backend now provides a `/v1/ecg/generate_test_data` endpoint that generates realistic ECG:
 
 ```javascript
-// Generate 5 seconds of simulated ECG at 512 Hz
-const testECGData = generateTestECG(512, 5);
+/**
+ * Fetch realistic test ECG data from the backend
+ */
+async function getTestECGData(durationSec = 10, samplingRateHz = 512, heartRateBpm = 72) {
+  const response = await fetch(
+    `${API_CONFIG.baseURL}/v1/ecg/generate_test_data?` +
+    `duration_sec=${durationSec}&` +
+    `sampling_rate_hz=${samplingRateHz}&` +
+    `heart_rate_bpm=${heartRateBpm}`
+  );
 
-function generateTestECG(samplingRate, durationSeconds) {
-  const samples = samplingRate * durationSeconds;
-  const ecg = [];
-  const heartRate = 72; // bpm
-  const beatInterval = (60 / heartRate) * samplingRate;
-
-  for (let i = 0; i < samples; i++) {
-    const phase = (i % beatInterval) / beatInterval;
-
-    // Simplified QRS complex
-    let value = 0;
-    if (phase > 0.1 && phase < 0.2) {
-      // P wave
-      value = 0.1 * Math.sin((phase - 0.1) * 10 * Math.PI);
-    } else if (phase > 0.25 && phase < 0.35) {
-      // QRS complex
-      value = 1.0 * Math.sin((phase - 0.25) * 10 * Math.PI);
-    } else if (phase > 0.4 && phase < 0.6) {
-      // T wave
-      value = 0.3 * Math.sin((phase - 0.4) * 5 * Math.PI);
-    }
-
-    // Add small noise
-    value += (Math.random() - 0.5) * 0.02;
-
-    ecg.push(value);
+  if (!response.ok) {
+    throw new Error(`Failed to generate test data: ${response.status}`);
   }
 
+  const data = await response.json();
+  console.log(data.note); // Confirms it's realistic data, not a linear ramp
+  return data.samples; // Array of realistic ECG values in mV
+}
+
+// Usage:
+const testECGData = await getTestECGData(10, 512, 72);
+const result = await analyzeECG(testECGData, 512, "mV");
+```
+
+#### Option 2: Generate Test Data Locally (Client-Side)
+
+If you prefer to generate test data in the browser:
+
+```javascript
+/**
+ * Generate realistic synthetic ECG with P waves, QRS complexes, and T waves
+ * @param {number} samplingRateHz - Sample rate (128, 256, or 512 Hz)
+ * @param {number} durationSeconds - Duration (1-30 seconds)
+ * @param {number} heartRateBpm - Heart rate (40-180 bpm)
+ * @returns {number[]} Array of ECG voltage samples in mV
+ */
+function generateTestECG(samplingRateHz = 512, durationSeconds = 10, heartRateBpm = 72) {
+  const numSamples = samplingRateHz * durationSeconds;
+  const rrSec = 60.0 / heartRateBpm;
+
+  // Generate beat times with heart rate variability
+  const beatTimes = [];
+  let currentTime = 0.3; // Start after 0.3 seconds
+  while (currentTime < durationSeconds) {
+    beatTimes.push(currentTime);
+    // Add HRV: small random variation in RR interval
+    currentTime += rrSec + (Math.random() - 0.5) * 0.04;
+  }
+
+  // Initialize with baseline noise
+  const ecg = Array(numSamples).fill(0).map(() => (Math.random() - 0.5) * 0.1);
+
+  // Add cardiac waveforms for each beat
+  beatTimes.forEach(beatTime => {
+    const beatIdx = Math.floor(beatTime * samplingRateHz);
+
+    // QRS complex (scaled for sampling rate)
+    const qrsWidth = Math.floor(20 * samplingRateHz / 512);
+
+    if (beatIdx + qrsWidth < numSamples) {
+      // Q wave (small negative deflection)
+      const qWidth = Math.max(1, Math.floor(qrsWidth / 4));
+      for (let i = 0; i < qWidth; i++) {
+        ecg[beatIdx + i] -= 0.2;
+      }
+
+      // R wave (large positive deflection - this is what R-peak detection looks for!)
+      const rWidth = Math.max(1, Math.floor(qrsWidth / 2));
+      for (let i = 0; i < rWidth; i++) {
+        ecg[beatIdx + qWidth + i] += 1.0;
+      }
+
+      // S wave (negative deflection)
+      for (let i = qWidth + rWidth; i < qrsWidth; i++) {
+        ecg[beatIdx + i] -= 0.3;
+      }
+    }
+
+    // P wave (before QRS)
+    const pIdx = beatIdx - Math.floor(40 * samplingRateHz / 512);
+    const pWidth = Math.floor(15 * samplingRateHz / 512);
+    if (pIdx > 0 && pIdx + pWidth < numSamples) {
+      for (let i = 0; i < pWidth; i++) {
+        ecg[pIdx + i] += 0.15;
+      }
+    }
+
+    // T wave (after QRS)
+    const tIdx = beatIdx + qrsWidth + Math.floor(60 * samplingRateHz / 512);
+    const tWidth = Math.floor(30 * samplingRateHz / 512);
+    if (tIdx + tWidth < numSamples) {
+      for (let i = 0; i < tWidth; i++) {
+        ecg[tIdx + i] += 0.25;
+      }
+    }
+  });
+
   return ecg;
+}
+
+// Usage:
+const testECGData = generateTestECG(512, 10, 72);
+const result = await analyzeECG(testECGData, 512, "mV");
+```
+
+#### How to Verify Your Test Data is Correct
+
+Before sending to the backend, verify your ECG data:
+
+```javascript
+function verifyECGData(samples) {
+  if (samples.length < 100) {
+    console.error("❌ Too few samples:", samples.length);
+    return false;
+  }
+
+  // Check for linear ramp (BAD!)
+  const diffs = [];
+  for (let i = 1; i < Math.min(100, samples.length); i++) {
+    diffs.push(samples[i] - samples[i-1]);
+  }
+  const avgDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+  const diffStd = Math.sqrt(
+    diffs.map(d => (d - avgDiff) ** 2).reduce((a, b) => a + b, 0) / diffs.length
+  );
+
+  if (diffStd < Math.abs(avgDiff) * 0.01 && avgDiff !== 0) {
+    console.error("❌ LINEAR RAMP DETECTED! This will fail R-peak detection.");
+    console.error(`   Average increment: ${avgDiff}, Std: ${diffStd}`);
+    console.error("   Use generateTestECG() or /v1/ecg/generate_test_data instead!");
+    return false;
+  }
+
+  console.log("✅ ECG data looks realistic");
+  console.log(`   Samples: ${samples.length}`);
+  console.log(`   Range: ${Math.min(...samples).toFixed(3)} to ${Math.max(...samples).toFixed(3)} mV`);
+  console.log(`   Increment std: ${diffStd.toFixed(6)} (good variability)`);
+  return true;
+}
+
+// Before analyzing:
+const testData = generateTestECG(512, 10, 72);
+if (verifyECGData(testData)) {
+  const result = await analyzeECG(testData, 512, "mV");
 }
 ```
 
 ---
 
 ## Step 5: Common Issues & Solutions
+
+### "No R-peaks detected" or "0 beats detected"
+
+**Cause**: You're sending **linear ramp test data** (e.g., `[0, 1, 2, 3, ...]`) instead of realistic ECG waveforms
+
+**How to identify**:
+- Check backend logs on Render for: `⚠️ WARNING: Data appears to be a LINEAR RAMP`
+- Your data increments are constant (e.g., always +0.0019 between samples)
+- After bandpass filtering, the signal becomes near-zero
+
+**Solution**:
+1. Replace your test data generator with one of the options in "Sample Test Data" above
+2. Use `/v1/ecg/generate_test_data` endpoint to get realistic data
+3. Run `verifyECGData()` before sending to ensure proper waveforms
+4. Real ECG needs P waves, QRS complexes, and T waves - not a ramp!
 
 ### "Connection failed" or "Network error"
 
