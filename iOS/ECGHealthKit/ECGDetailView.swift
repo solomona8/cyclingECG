@@ -277,6 +277,47 @@ struct AnalysisCard: View {
                     )
                 }
 
+                // HRV RMSSD
+                if let rmssd = analysis.features.hrv?.rmssd_ms {
+                    AnalysisRow(
+                        icon: "waveform.path",
+                        label: "HRV RMSSD",
+                        value: String(format: "%.1f ms", rmssd),
+                        color: .green
+                    )
+                }
+
+                // QRS Duration
+                if let qrs = analysis.features.intervals?.qrs_duration_ms {
+                    AnalysisRow(
+                        icon: "bolt.fill",
+                        label: "QRS Duration",
+                        value: String(format: "%.1f ms", qrs),
+                        color: .purple
+                    )
+                }
+
+                // QT Interval
+                if let qt = analysis.features.intervals?.qt_interval_ms {
+                    AnalysisRow(
+                        icon: "timer",
+                        label: "QT Interval",
+                        value: String(format: "%.1f ms", qt),
+                        color: .orange
+                    )
+                }
+
+                // QTc (Corrected)
+                if let qtc = analysis.features.intervals?.qtc_ms {
+                    let qtcColor: Color = qtc > 460 ? .red : (qtc > 440 ? .orange : .blue)
+                    AnalysisRow(
+                        icon: "timer.circle.fill",
+                        label: "QTc (Bazett)",
+                        value: String(format: "%.1f ms", qtc),
+                        color: qtcColor
+                    )
+                }
+
                 // Signal Quality
                 if let quality = analysis.features.signal_quality?.overall_quality {
                     AnalysisRow(
