@@ -247,6 +247,29 @@ struct AnalysisCard: View {
             } else if let analysis = analysis {
                 Divider()
 
+                // Column Headers
+                HStack {
+                    Spacer()
+                        .frame(width: 24 + 8) // Icon width + spacing
+
+                    Text("Metric")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    Text("Current")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 80, alignment: .center)
+
+                    Text("30 Day Avg")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 80, alignment: .center)
+                }
+                .padding(.bottom, 4)
+
                 // Rhythm
                 if let rhythm = analysis.features.rhythm_classification {
                     AnalysisRow(
@@ -424,24 +447,23 @@ struct AnalysisRow: View {
 
                 Spacer()
 
-                HStack(spacing: 8) {
-                    // Current value - highlight in red if outlier
-                    Text(value)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(stats?.is_outlier == true ? .red : .primary)
+                // Current value - highlight in red if outlier
+                Text(value)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(stats?.is_outlier == true ? .red : .primary)
+                    .frame(width: 80, alignment: .center)
 
-                    // 30-day average if available
-                    if let avg = stats?.avg_30d {
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("30d avg")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                            Text(String(format: "%.1f", avg))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                // 30-day average if available
+                if let avg = stats?.avg_30d {
+                    Text(String(format: "%.1f", avg))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .frame(width: 80, alignment: .center)
+                } else {
+                    // Empty placeholder to maintain alignment
+                    Text("")
+                        .frame(width: 80, alignment: .center)
                 }
             }
 
