@@ -263,7 +263,8 @@ struct AnalysisCard: View {
                         icon: "heart.fill",
                         label: "Mean Heart Rate",
                         value: "\(Int(hrMean)) bpm",
-                        color: .red
+                        color: .red,
+                        stats: analysis.stats_30d?.heart_rate_bpm?.mean
                     )
                 }
 
@@ -273,7 +274,8 @@ struct AnalysisCard: View {
                         icon: "waveform",
                         label: "HRV SDNN",
                         value: String(format: "%.1f ms", sdnn),
-                        color: .green
+                        color: .green,
+                        stats: analysis.stats_30d?.hrv?.sdnn_ms
                     )
                 }
 
@@ -283,7 +285,8 @@ struct AnalysisCard: View {
                         icon: "waveform.path",
                         label: "HRV RMSSD",
                         value: String(format: "%.1f ms", rmssd),
-                        color: .green
+                        color: .green,
+                        stats: analysis.stats_30d?.hrv?.rmssd_ms
                     )
                 }
 
@@ -293,7 +296,8 @@ struct AnalysisCard: View {
                         icon: "bolt.fill",
                         label: "QRS Duration",
                         value: String(format: "%.1f ms", qrs),
-                        color: .purple
+                        color: .purple,
+                        stats: analysis.stats_30d?.intervals?.qrs_duration_ms
                     )
                 }
 
@@ -303,7 +307,8 @@ struct AnalysisCard: View {
                         icon: "timer",
                         label: "QT Interval",
                         value: String(format: "%.1f ms", qt),
-                        color: .orange
+                        color: .orange,
+                        stats: analysis.stats_30d?.intervals?.qt_interval_ms
                     )
                 }
 
@@ -314,7 +319,8 @@ struct AnalysisCard: View {
                         icon: "timer.circle.fill",
                         label: "QTc (Bazett)",
                         value: String(format: "%.1f ms", qtc),
-                        color: qtcColor
+                        color: qtcColor,
+                        stats: analysis.stats_30d?.intervals?.qtc_ms
                     )
                 }
 
@@ -395,22 +401,62 @@ struct AnalysisRow: View {
     let label: String
     let value: String
     let color: Color
+    let stats: MetricStats?
+
+    init(icon: String, label: String, value: String, color: Color, stats: MetricStats? = nil) {
+        self.icon = icon
+        self.label = label
+        self.value = value
+        self.color = color
+        self.stats = stats
+    }
 
     var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundColor(color)
-                .frame(width: 24)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(color)
+                    .frame(width: 24)
 
-            Text(label)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
 
-            Spacer()
+                Spacer()
 
-            Text(value)
-                .font(.subheadline)
-                .fontWeight(.semibold)
+                HStack(spacing: 8) {
+                    // Current value - highlight in red if outlier
+                    Text(value)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(stats?.is_outlier == true ? .red : .primary)
+
+                    // 30-day average if available
+                    if let avg = stats?.avg_30d {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("30d avg")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(String(format: "%.1f", avg))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+
+            // Show outlier indicator if needed
+            if stats?.is_outlier == true {
+                HStack(spacing: 4) {
+                    Spacer()
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundColor(.red)
+                    Text(">2 SD from 30-day avg")
+                        .font(.caption2)
+                        .foregroundColor(.red)
+                }
+            }
         }
     }
 }

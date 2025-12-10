@@ -11,7 +11,23 @@ try:
 except Exception:
     _extract_features_real = None  # we'll use a stub fallback below
 
+# Import database operations
+try:
+    from app.database import init_db, save_analysis, get_30day_stats_for_all_metrics
+except Exception as e:
+    print(f"Warning: Database module not available: {e}")
+    init_db = None
+    save_analysis = None
+    get_30day_stats_for_all_metrics = None
+
 app = FastAPI(title="ECG Analyzer", version="1.0.0")
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    if init_db:
+        init_db()
+        print("Database initialized successfully")
 
 # ---- config & models ----
 API_KEY = os.environ.get("API_KEY")  # no default; auth is disabled if unset
@@ -368,9 +384,10 @@ def analyze_ecg(
     max_hr = sanitize_value(features.get("max_hr_bpm", 0.0))
 
     # Format response to match iOS app's ECGAnalysisResponse structure
+    timestamp = datetime.utcnow()
     response = {
         "recording_id": payload.recording_id,
-        "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+        "timestamp_utc": timestamp.isoformat() + "Z",
         "features": {
             "rhythm_classification": features.get("rhythm_label", "undetermined"),
             "rhythm_confidence": sanitize_value(features.get("confidence", 0.0)),
@@ -409,6 +426,23 @@ def analyze_ecg(
         },
         "analyzer_version": payload.analyzer_version or "2.0.0"
     }
+
+    # Save to database and calculate 30-day stats
+    if save_analysis and get_30day_stats_for_all_metrics:
+        try:
+            # Save current analysis
+            save_analysis(payload.recording_id, timestamp, response)
+            print(f"[ANALYZE] Saved analysis to database for {payload.recording_id}")
+
+            # Calculate 30-day stats for all metrics
+            stats_30d = get_30day_stats_for_all_metrics(response["features"])
+            response["stats_30d"] = stats_30d
+            print(f"[ANALYZE] Calculated 30-day stats for {payload.recording_id}")
+        except Exception as e:
+            print(f"[ANALYZE] Warning: Could not save/calculate stats: {e}")
+            import traceback
+            traceback.print_exc()
+            # Continue without stats - don't fail the request
 
     STORE[payload.recording_id] = response
     print(f"[ANALYZE] Response generated successfully for {payload.recording_id}")

@@ -217,6 +217,7 @@ struct ECGAnalysisResponse: Codable {
     let features: ECGFeatures
     let narrative: ECGNarrative?
     let analyzer_version: String
+    let stats_30d: Stats30Day?
 }
 
 struct ECGFeatures: Codable {
@@ -267,4 +268,48 @@ struct ECGNarrative: Codable {
     let patient_summary: String?
     let clinician_notes: String?
     let safety_flags: [String]?
+}
+
+// MARK: - 30-Day Statistics Models
+
+struct MetricStats: Codable {
+    let avg_30d: Double?
+    let std_30d: Double?
+    let is_outlier: Bool
+}
+
+struct HeartRateStats30Day: Codable {
+    let mean: MetricStats?
+    let min: MetricStats?
+    let max: MetricStats?
+}
+
+struct RRIntervalStats30Day: Codable {
+    let mean: MetricStats?
+    let min: MetricStats?
+    let max: MetricStats?
+    let coefficient_of_variation: MetricStats?
+}
+
+struct HRVStats30Day: Codable {
+    let sdnn_ms: MetricStats?
+    let rmssd_ms: MetricStats?
+}
+
+struct IntervalStats30Day: Codable {
+    let qrs_duration_ms: MetricStats?
+    let qt_interval_ms: MetricStats?
+    let qtc_ms: MetricStats?
+}
+
+struct MorphologyStats30Day: Codable {
+    let ectopy_burden_percent: MetricStats?
+}
+
+struct Stats30Day: Codable {
+    let heart_rate_bpm: HeartRateStats30Day?
+    let rr_intervals_ms: RRIntervalStats30Day?
+    let hrv: HRVStats30Day?
+    let intervals: IntervalStats30Day?
+    let morphology: MorphologyStats30Day?
 }
