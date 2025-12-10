@@ -63,7 +63,10 @@ struct ECGDetailView: View {
                 analysis: analysisResult,
                 onExport: { url in
                     fileToShare = url
-                    showingShareSheet = true
+                    // Delay to allow the export sheet to fully dismiss before showing share sheet
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        showingShareSheet = true
+                    }
                 }
             )
         }
