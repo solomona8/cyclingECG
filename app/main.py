@@ -444,8 +444,8 @@ def analyze_ecg(
             save_analysis(payload.recording_id, timestamp, response)
             print(f"[ANALYZE] Saved analysis to database for {payload.recording_id}")
 
-            # Calculate 30-day stats for all metrics
-            stats_30d = get_30day_stats_for_all_metrics(response["features"])
+            # Calculate 30-day stats for all metrics (excluding current recording)
+            stats_30d = get_30day_stats_for_all_metrics(response["features"], payload.recording_id)
             response["stats_30d"] = stats_30d
             print(f"[ANALYZE] Calculated 30-day stats for {payload.recording_id}")
         except Exception as e:

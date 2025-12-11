@@ -127,7 +127,7 @@ def save_analysis(recording_id: str, timestamp_utc: datetime, analysis_data: Dic
         db.close()
 
 
-def calculate_30day_stats(metric_name: str, current_value: Optional[float]) -> Dict[str, Optional[float]]:
+def calculate_30day_stats(metric_name: str, current_value: Optional[float], current_recording_id: str = None) -> Dict[str, Optional[float]]:
     """
     Calculate 30-day average and standard deviation for a metric
 
@@ -143,14 +143,16 @@ def calculate_30day_stats(metric_name: str, current_value: Optional[float]) -> D
 
     db = SessionLocal()
     try:
-        # Get data from last 30 days
+        # Get data from last 30 days, excluding current recording
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
 
-        # Query based on metric name
+        # Query based on metric name, excluding current recording
         query = db.query(ECGAnalysis).filter(ECGAnalysis.timestamp_utc >= thirty_days_ago)
+        if current_recording_id:
+            query = query.filter(ECGAnalysis.recording_id != current_recording_id)
         records = query.all()
 
-        if not records or len(records) < 2:
+        if not records or len(records) < 1:
             return {"avg_30d": None, "std_30d": None, "is_outlier": False}
 
         # Extract values for the specific metric
@@ -160,7 +162,7 @@ def calculate_30day_stats(metric_name: str, current_value: Optional[float]) -> D
             if val is not None:
                 values.append(val)
 
-        if len(values) < 2:
+        if len(values) < 1:
             return {"avg_30d": None, "std_30d": None, "is_outlier": False}
 
         # Calculate statistics
@@ -179,7 +181,7 @@ def calculate_30day_stats(metric_name: str, current_value: Optional[float]) -> D
         db.close()
 
 
-def get_30day_stats_for_all_metrics(features: Dict) -> Dict[str, Dict]:
+def get_30day_stats_for_all_metrics(features: Dict, recording_id: str = None) -> Dict[str, Dict]:
     """
     Calculate 30-day stats for all metrics in the analysis
 
@@ -193,32 +195,32 @@ def get_30day_stats_for_all_metrics(features: Dict) -> Dict[str, Dict]:
 
     stats = {
         'heart_rate_bpm': {
-            'mean': calculate_30day_stats('hr_mean', hr.get('mean')),
-            'min': calculate_30day_stats('hr_min', hr.get('min')),
-            'max': calculate_30day_stats('hr_max', hr.get('max'))
+            'mean': calculate_30day_stats('hr_mean', hr.get('mean'), recording_id),
+            'min': calculate_30day_stats('hr_min', hr.get('min'), recording_id),
+            'max': calculate_30day_stats('hr_max', hr.get('max'), recording_id)
         },
         'rr_intervals_ms': {
-            'mean': calculate_30day_stats('rr_mean', rr.get('mean')),
-            'min': calculate_30day_stats('rr_min', rr.get('min')),
-            'max': calculate_30day_stats('rr_max', rr.get('max')),
-            'coefficient_of_variation': calculate_30day_stats('rr_cv', rr.get('coefficient_of_variation'))
+            'mean': calculate_30day_stats('rr_mean', rr.get('mean'), recording_id),
+            'min': calculate_30day_stats('rr_min', rr.get('min'), recording_id),
+            'max': calculate_30day_stats('rr_max', rr.get('max'), recording_id),
+            'coefficient_of_variation': calculate_30day_stats('rr_cv', rr.get('coefficient_of_variation'), recording_id)
         },
         'hrv': {
-            'sdnn_ms': calculate_30day_stats('hrv_sdnn', hrv.get('sdnn_ms')),
-            'rmssd_ms': calculate_30day_stats('hrv_rmssd', hrv.get('rmssd_ms'))
+            'sdnn_ms': calculate_30day_stats('hrv_sdnn', hrv.get('sdnn_ms'), recording_id),
+            'rmssd_ms': calculate_30day_stats('hrv_rmssd', hrv.get('rmssd_ms'), recording_id)
         },
         'intervals': {
-            'p_wave_duration_ms': calculate_30day_stats('p_wave_duration', intervals.get('p_wave_duration_ms')),
-            'pr_interval_ms': calculate_30day_stats('pr_interval', intervals.get('pr_interval_ms')),
-            'pr_segment_ms': calculate_30day_stats('pr_segment', intervals.get('pr_segment_ms')),
-            'qrs_duration_ms': calculate_30day_stats('qrs_duration', intervals.get('qrs_duration_ms')),
-            'st_segment_ms': calculate_30day_stats('st_segment', intervals.get('st_segment_ms')),
-            't_wave_duration_ms': calculate_30day_stats('t_wave_duration', intervals.get('t_wave_duration_ms')),
-            'qt_interval_ms': calculate_30day_stats('qt_interval', intervals.get('qt_interval_ms')),
-            'qtc_ms': calculate_30day_stats('qtc', intervals.get('qtc_ms'))
+            'p_wave_duration_ms': calculate_30day_stats('p_wave_duration', intervals.get('p_wave_duration_ms'), recording_id),
+            'pr_interval_ms': calculate_30day_stats('pr_interval', intervals.get('pr_interval_ms'), recording_id),
+            'pr_segment_ms': calculate_30day_stats('pr_segment', intervals.get('pr_segment_ms'), recording_id),
+            'qrs_duration_ms': calculate_30day_stats('qrs_duration', intervals.get('qrs_duration_ms'), recording_id),
+            'st_segment_ms': calculate_30day_stats('st_segment', intervals.get('st_segment_ms'), recording_id),
+            't_wave_duration_ms': calculate_30day_stats('t_wave_duration', intervals.get('t_wave_duration_ms'), recording_id),
+            'qt_interval_ms': calculate_30day_stats('qt_interval', intervals.get('qt_interval_ms'), recording_id),
+            'qtc_ms': calculate_30day_stats('qtc', intervals.get('qtc_ms'), recording_id)
         },
         'morphology': {
-            'ectopy_burden_percent': calculate_30day_stats('ectopy_burden', morphology.get('ectopy_burden_percent'))
+            'ectopy_burden_percent': calculate_30day_stats('ectopy_burden', morphology.get('ectopy_burden_percent'), recording_id)
         }
     }
 
