@@ -417,6 +417,29 @@ struct AnalysisCard: View {
                     )
                 }
 
+                // Clinical Disclaimer
+                Divider()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .font(.caption)
+
+                        Text("Not for clinical use!")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.orange)
+                    }
+
+                    Text("If you have concerns about your heart rate, and/or are experiencing symptoms such as pain in the chest, arm, or jaw, nausea, sweating, or dizziness, contact your health provider immediately!")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+
                 // Narrative
                 if let narrative = analysis.narrative {
                     Divider()
