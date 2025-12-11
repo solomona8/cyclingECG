@@ -65,8 +65,15 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} i
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
-    """Initialize database tables"""
+    """Initialize database tables and run migrations"""
     Base.metadata.create_all(bind=engine)
+
+    # Run migrations to add any missing columns
+    try:
+        from app.migrate_db import migrate_database
+        migrate_database()
+    except Exception as e:
+        print(f"Warning: Migration failed: {e}")
 
 
 def save_analysis(recording_id: str, timestamp_utc: datetime, analysis_data: Dict) -> None:
