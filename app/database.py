@@ -39,7 +39,12 @@ class ECGAnalysis(Base):
     hrv_rmssd = Column(Float)
 
     # Interval metrics
+    p_wave_duration = Column(Float, nullable=True)
+    pr_interval = Column(Float, nullable=True)
+    pr_segment = Column(Float, nullable=True)
     qrs_duration = Column(Float)
+    st_segment = Column(Float, nullable=True)
+    t_wave_duration = Column(Float, nullable=True)
     qt_interval = Column(Float)
     qtc = Column(Float)
 
@@ -92,7 +97,12 @@ def save_analysis(recording_id: str, timestamp_utc: datetime, analysis_data: Dic
             rr_cv=rr.get('coefficient_of_variation'),
             hrv_sdnn=hrv.get('sdnn_ms'),
             hrv_rmssd=hrv.get('rmssd_ms'),
+            p_wave_duration=intervals.get('p_wave_duration_ms'),
+            pr_interval=intervals.get('pr_interval_ms'),
+            pr_segment=intervals.get('pr_segment_ms'),
             qrs_duration=intervals.get('qrs_duration_ms'),
+            st_segment=intervals.get('st_segment_ms'),
+            t_wave_duration=intervals.get('t_wave_duration_ms'),
             qt_interval=intervals.get('qt_interval_ms'),
             qtc=intervals.get('qtc_ms'),
             signal_quality=quality.get('overall_quality'),
@@ -198,7 +208,12 @@ def get_30day_stats_for_all_metrics(features: Dict) -> Dict[str, Dict]:
             'rmssd_ms': calculate_30day_stats('hrv_rmssd', hrv.get('rmssd_ms'))
         },
         'intervals': {
+            'p_wave_duration_ms': calculate_30day_stats('p_wave_duration', intervals.get('p_wave_duration_ms')),
+            'pr_interval_ms': calculate_30day_stats('pr_interval', intervals.get('pr_interval_ms')),
+            'pr_segment_ms': calculate_30day_stats('pr_segment', intervals.get('pr_segment_ms')),
             'qrs_duration_ms': calculate_30day_stats('qrs_duration', intervals.get('qrs_duration_ms')),
+            'st_segment_ms': calculate_30day_stats('st_segment', intervals.get('st_segment_ms')),
+            't_wave_duration_ms': calculate_30day_stats('t_wave_duration', intervals.get('t_wave_duration_ms')),
             'qt_interval_ms': calculate_30day_stats('qt_interval', intervals.get('qt_interval_ms')),
             'qtc_ms': calculate_30day_stats('qtc', intervals.get('qtc_ms'))
         },

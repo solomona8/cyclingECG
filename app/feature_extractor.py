@@ -87,16 +87,46 @@ def extract_features(samples: List[float], fs: float) -> Dict[str, Any]:
         avg_qtc = 440.0
         qt_uncertainty = 35.0
 
-    # 13) PR interval (if P-waves detected)
+    # 13) Calculate detailed interval metrics
+    p_wave_durations = []
     pr_intervals = []
-    if p_waves:
-        for i, p_idx in enumerate(p_waves):
-            if i < len(r_peaks):
-                pr_ms = ((r_peaks[i] - p_idx) / fs) * 1000.0
-                if 120 <= pr_ms <= 200:  # Physiologically valid PR
-                    pr_intervals.append(pr_ms)
+    pr_segments = []
+    st_segments = []
+    t_wave_durations = []
 
+    # Match P waves, QRS complexes, and T waves for each beat
+    for i in range(min(len(p_waves), len(qrs_features), len(t_waves))):
+        p_wave = p_waves[i]
+        qrs = qrs_features[i]
+        t_wave = t_waves[i]
+
+        # P wave duration
+        p_wave_durations.append(p_wave['duration_ms'])
+
+        # PR interval: from P wave onset to QRS onset
+        pr_ms = ((qrs['onset'] - p_wave['onset']) / fs) * 1000.0
+        if 120 <= pr_ms <= 220:  # Physiologically valid PR interval
+            pr_intervals.append(pr_ms)
+
+        # PR segment: from P wave offset to QRS onset
+        pr_seg_ms = ((qrs['onset'] - p_wave['offset']) / fs) * 1000.0
+        if 50 <= pr_seg_ms <= 120:  # Physiologically valid PR segment
+            pr_segments.append(pr_seg_ms)
+
+        # ST segment: from QRS offset to T wave onset
+        st_seg_ms = ((t_wave['onset'] - qrs['offset']) / fs) * 1000.0
+        if 50 <= st_seg_ms <= 150:  # Physiologically valid ST segment
+            st_segments.append(st_seg_ms)
+
+        # T wave duration
+        t_wave_durations.append(t_wave['duration_ms'])
+
+    # Calculate averages
+    avg_p_wave = np.mean(p_wave_durations) if p_wave_durations else None
     avg_pr = np.mean(pr_intervals) if pr_intervals else None
+    avg_pr_seg = np.mean(pr_segments) if pr_segments else None
+    avg_st_seg = np.mean(st_segments) if st_segments else None
+    avg_t_wave = np.mean(t_wave_durations) if t_wave_durations else None
 
     return {
         "rhythm_label": rhythm_label,
@@ -110,10 +140,14 @@ def extract_features(samples: List[float], fs: float) -> Dict[str, Any]:
         "artifact_mask": [],
         "sdnn_ms": float(round(sdnn, 1)),
         "rmssd_ms": float(round(rmssd, 1)),
+        "p_wave_ms": float(round(avg_p_wave, 1)) if avg_p_wave else None,
+        "pr_ms": float(round(avg_pr, 1)) if avg_pr else None,
+        "pr_seg_ms": float(round(avg_pr_seg, 1)) if avg_pr_seg else None,
         "qrs_ms": float(round(avg_qrs, 1)),
+        "st_seg_ms": float(round(avg_st_seg, 1)) if avg_st_seg else None,
+        "t_wave_ms": float(round(avg_t_wave, 1)) if avg_t_wave else None,
         "qt_ms": float(round(avg_qt, 1)),
         "qtc_ms_bazett": float(round(avg_qtc, 1)),
-        "pr_ms": float(round(avg_pr, 1)) if avg_pr else None,
         "uncertainty_ms": float(round(qt_uncertainty, 1)),
         "ectopy_burden_pct": ectopy_results['burden_pct'],
         "pvcs_detected": ectopy_results['pvc_count'],
@@ -258,23 +292,23 @@ def _detect_qrs_complexes(x: np.ndarray, r_peaks: np.ndarray, fs: float) -> List
 # T-WAVE DETECTION
 # ============================================================================
 
-def _detect_t_waves(x: np.ndarray, r_peaks: np.ndarray, fs: float) -> List[int]:
-    """Detect T-wave peaks for QT interval measurement."""
+def _detect_t_waves(x: np.ndarray, r_peaks: np.ndarray, fs: float) -> List[Dict[str, Any]]:
+    """Detect T-wave features including onset, peak, offset, and duration."""
     t_waves = []
 
     for i, r_idx in enumerate(r_peaks):
-        # T-wave search window: 150-400ms after R-peak
-        t_start = r_idx + int(0.15 * fs)
-        t_end = min(len(x), r_idx + int(0.45 * fs))
+        # T-wave search window: 150-450ms after R-peak
+        t_start_search = r_idx + int(0.15 * fs)
+        t_end_search = min(len(x), r_idx + int(0.45 * fs))
 
         # Stop search before next R-peak if it exists
         if i + 1 < len(r_peaks):
-            t_end = min(t_end, r_peaks[i + 1])
+            t_end_search = min(t_end_search, r_peaks[i + 1])
 
-        if t_end <= t_start:
+        if t_end_search <= t_start_search:
             continue
 
-        t_seg = x[t_start:t_end]
+        t_seg = x[t_start_search:t_end_search]
 
         if len(t_seg) < 3:
             continue
@@ -283,14 +317,69 @@ def _detect_t_waves(x: np.ndarray, r_peaks: np.ndarray, fs: float) -> List[int]:
         # T-wave can be positive or negative
         abs_seg = np.abs(t_seg)
         t_peak_local = np.argmax(abs_seg)
-        t_peak = t_start + t_peak_local
+        t_peak = t_start_search + t_peak_local
 
         # Validate: T-wave should have reasonable amplitude (at least 10% of R-peak)
         if abs(x[t_peak]) > 0.1 * abs(x[r_idx]):
-            t_waves.append(int(t_peak))
+            # Detect T wave onset and offset
+            # Search 80ms before and after peak
+            onset_window = int(0.08 * fs)
+
+            # T wave onset - find where signal starts rising after ST segment
+            t_onset_start = max(t_start_search, t_peak - onset_window)
+            onset_seg = x[t_onset_start:t_peak]
+            if len(onset_seg) > 2:
+                d_onset = np.abs(np.diff(onset_seg))
+                threshold = np.mean(d_onset) + 0.3 * np.std(d_onset)
+                onset_candidates = np.where(d_onset > threshold)[0]
+                if len(onset_candidates) > 0:
+                    t_onset = t_onset_start + onset_candidates[0]
+                else:
+                    t_onset = t_onset_start
+            else:
+                t_onset = t_onset_start
+
+            # T wave offset - find where signal returns to baseline
+            t_offset_end = min(len(x), t_peak + onset_window)
+            if i + 1 < len(r_peaks):
+                t_offset_end = min(t_offset_end, r_peaks[i + 1])
+
+            offset_seg = x[t_peak:t_offset_end]
+            if len(offset_seg) > 2:
+                d_offset = np.abs(np.diff(offset_seg))
+                threshold = np.mean(d_offset) + 0.3 * np.std(d_offset)
+                offset_candidates = np.where(d_offset > threshold)[0]
+                if len(offset_candidates) > 0:
+                    t_offset = t_peak + offset_candidates[-1]
+                else:
+                    t_offset = t_offset_end - 1
+            else:
+                t_offset = t_offset_end - 1
+
+            # Calculate T wave duration (typical: 160ms)
+            t_duration_ms = ((t_offset - t_onset) / fs) * 1000.0
+
+            # Sanity check
+            if t_duration_ms < 100:
+                t_duration_ms = 160.0  # Default
+            elif t_duration_ms > 250:
+                t_duration_ms = 180.0  # Default
+
+            t_waves.append({
+                'peak': int(t_peak),
+                'onset': int(t_onset),
+                'offset': int(t_offset),
+                'duration_ms': float(t_duration_ms)
+            })
         else:
-            # If no significant T-wave, estimate at 300ms
-            t_waves.append(int(r_idx + int(0.30 * fs)))
+            # If no significant T-wave, estimate
+            estimated_peak = int(r_idx + int(0.30 * fs))
+            t_waves.append({
+                'peak': estimated_peak,
+                'onset': estimated_peak - int(0.08 * fs),
+                'offset': estimated_peak + int(0.08 * fs),
+                'duration_ms': 160.0
+            })
 
     return t_waves
 
@@ -298,19 +387,19 @@ def _detect_t_waves(x: np.ndarray, r_peaks: np.ndarray, fs: float) -> List[int]:
 # P-WAVE DETECTION
 # ============================================================================
 
-def _detect_p_waves(x: np.ndarray, r_peaks: np.ndarray, fs: float) -> List[int]:
-    """Detect P-wave peaks for PR interval measurement."""
+def _detect_p_waves(x: np.ndarray, r_peaks: np.ndarray, fs: float) -> List[Dict[str, Any]]:
+    """Detect P-wave features including onset, peak, offset, and duration."""
     p_waves = []
 
     for r_idx in r_peaks:
-        # P-wave search window: 80-200ms before R-peak
-        p_end = r_idx - int(0.08 * fs)
-        p_start = max(0, r_idx - int(0.25 * fs))
+        # P-wave search window: 80-250ms before R-peak
+        p_end_search = r_idx - int(0.08 * fs)
+        p_start_search = max(0, r_idx - int(0.25 * fs))
 
-        if p_end <= p_start:
+        if p_end_search <= p_start_search:
             continue
 
-        p_seg = x[p_start:p_end]
+        p_seg = x[p_start_search:p_end_search]
 
         if len(p_seg) < 3:
             continue
@@ -323,11 +412,57 @@ def _detect_p_waves(x: np.ndarray, r_peaks: np.ndarray, fs: float) -> List[int]:
             p_smooth = np.abs(p_seg)
 
         p_peak_local = np.argmax(p_smooth)
-        p_peak = p_start + p_peak_local
+        p_peak = p_start_search + p_peak_local
 
         # Validate: P-wave should be smaller than R-peak
         if abs(x[p_peak]) < 0.5 * abs(x[r_idx]) and abs(x[p_peak]) > 0.05:
-            p_waves.append(int(p_peak))
+            # Detect P wave onset and offset
+            # Search 40ms before and after peak for onset/offset
+            onset_window = int(0.04 * fs)
+
+            # P wave onset - find where signal starts rising before peak
+            p_onset_start = max(0, p_peak - onset_window)
+            onset_seg = x[p_onset_start:p_peak]
+            if len(onset_seg) > 2:
+                d_onset = np.abs(np.diff(onset_seg))
+                threshold = np.mean(d_onset) + 0.3 * np.std(d_onset)
+                onset_candidates = np.where(d_onset > threshold)[0]
+                if len(onset_candidates) > 0:
+                    p_onset = p_onset_start + onset_candidates[0]
+                else:
+                    p_onset = p_onset_start
+            else:
+                p_onset = p_onset_start
+
+            # P wave offset - find where signal returns to baseline after peak
+            p_offset_end = min(len(x), p_peak + onset_window)
+            offset_seg = x[p_peak:p_offset_end]
+            if len(offset_seg) > 2:
+                d_offset = np.abs(np.diff(offset_seg))
+                threshold = np.mean(d_offset) + 0.3 * np.std(d_offset)
+                offset_candidates = np.where(d_offset > threshold)[0]
+                if len(offset_candidates) > 0:
+                    p_offset = p_peak + offset_candidates[-1]
+                else:
+                    p_offset = p_offset_end - 1
+            else:
+                p_offset = p_offset_end - 1
+
+            # Calculate P wave duration (typical: 80-120ms)
+            p_duration_ms = ((p_offset - p_onset) / fs) * 1000.0
+
+            # Sanity check
+            if p_duration_ms < 60:
+                p_duration_ms = 80.0  # Default
+            elif p_duration_ms > 120:
+                p_duration_ms = 100.0  # Default
+
+            p_waves.append({
+                'peak': int(p_peak),
+                'onset': int(p_onset),
+                'offset': int(p_offset),
+                'duration_ms': float(p_duration_ms)
+            })
 
     return p_waves
 
@@ -335,12 +470,13 @@ def _detect_p_waves(x: np.ndarray, r_peaks: np.ndarray, fs: float) -> List[int]:
 # QT INTERVAL MEASUREMENT
 # ============================================================================
 
-def _measure_qt_intervals(r_peaks: np.ndarray, t_waves: List[int], fs: float) -> List[Dict[str, float]]:
+def _measure_qt_intervals(r_peaks: np.ndarray, t_waves: List[Dict[str, Any]], fs: float) -> List[Dict[str, float]]:
     """Measure QT intervals and apply Bazett correction."""
     qt_intervals = []
 
     for i in range(min(len(r_peaks), len(t_waves))):
-        qt_samples = t_waves[i] - r_peaks[i]
+        # Use T-wave offset for QT interval (Q to end of T)
+        qt_samples = t_waves[i]['offset'] - r_peaks[i]
         qt_ms = (qt_samples / fs) * 1000.0
 
         # Physiologically valid QT: 200-600ms
@@ -607,10 +743,14 @@ def _fallback_no_beats(n: int, fs: float) -> Dict[str, Any]:
         "artifact_mask": [],
         "sdnn_ms": 0.0,
         "rmssd_ms": 0.0,
+        "p_wave_ms": None,
+        "pr_ms": None,
+        "pr_seg_ms": None,
         "qrs_ms": 0.0,
+        "st_seg_ms": None,
+        "t_wave_ms": None,
         "qt_ms": 0.0,
         "qtc_ms_bazett": 0.0,
-        "pr_ms": None,
         "uncertainty_ms": 50.0,
         "ectopy_burden_pct": 0.0,
         "pvcs_detected": 0,

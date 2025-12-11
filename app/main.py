@@ -190,7 +190,12 @@ def test_response():
                 "rmssd_ms": 42.0
             },
             "intervals": {
+                "p_wave_duration_ms": 100.0,
+                "pr_interval_ms": 160.0,
+                "pr_segment_ms": 80.0,
                 "qrs_duration_ms": 90.0,
+                "st_segment_ms": 100.0,
+                "t_wave_duration_ms": 160.0,
                 "qt_interval_ms": 360.0,
                 "qtc_ms": 440.0
             },
@@ -407,7 +412,12 @@ def analyze_ecg(
                 "rmssd_ms": sanitize_value(features.get("rmssd_ms", 0.0))
             },
             "intervals": {
+                "p_wave_duration_ms": sanitize_value(features.get("p_wave_ms")),
+                "pr_interval_ms": sanitize_value(features.get("pr_ms")),
+                "pr_segment_ms": sanitize_value(features.get("pr_seg_ms")),
                 "qrs_duration_ms": sanitize_value(features.get("qrs_ms", 0.0)),
+                "st_segment_ms": sanitize_value(features.get("st_seg_ms")),
+                "t_wave_duration_ms": sanitize_value(features.get("t_wave_ms")),
                 "qt_interval_ms": sanitize_value(features.get("qt_ms", 0.0)),
                 "qtc_ms": sanitize_value(features.get("qtc_ms_bazett", 0.0))
             },
@@ -566,7 +576,12 @@ async def upload_csv(
                 "rmssd_ms": sanitize_value(features.get("rmssd_ms", 0.0))
             },
             "intervals": {
+                "p_wave_duration_ms": sanitize_value(features.get("p_wave_ms")),
+                "pr_interval_ms": sanitize_value(features.get("pr_ms")),
+                "pr_segment_ms": sanitize_value(features.get("pr_seg_ms")),
                 "qrs_duration_ms": sanitize_value(features.get("qrs_ms", 0.0)),
+                "st_segment_ms": sanitize_value(features.get("st_seg_ms")),
+                "t_wave_duration_ms": sanitize_value(features.get("t_wave_ms")),
                 "qt_interval_ms": sanitize_value(features.get("qt_ms", 0.0)),
                 "qtc_ms": sanitize_value(features.get("qtc_ms_bazett", 0.0))
             },

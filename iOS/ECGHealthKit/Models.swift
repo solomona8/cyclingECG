@@ -250,7 +250,12 @@ struct HRVInfo: Codable {
 }
 
 struct IntervalInfo: Codable {
+    let p_wave_duration_ms: Double?
+    let pr_interval_ms: Double?
+    let pr_segment_ms: Double?
     let qrs_duration_ms: Double?
+    let st_segment_ms: Double?
+    let t_wave_duration_ms: Double?
     let qt_interval_ms: Double?
     let qtc_ms: Double?
 }
@@ -297,7 +302,12 @@ struct HRVStats30Day: Codable {
 }
 
 struct IntervalStats30Day: Codable {
+    let p_wave_duration_ms: MetricStats?
+    let pr_interval_ms: MetricStats?
+    let pr_segment_ms: MetricStats?
     let qrs_duration_ms: MetricStats?
+    let st_segment_ms: MetricStats?
+    let t_wave_duration_ms: MetricStats?
     let qt_interval_ms: MetricStats?
     let qtc_ms: MetricStats?
 }

@@ -316,6 +316,40 @@ struct AnalysisCard: View {
                     )
                 }
 
+                // P Wave Duration
+                if let pWave = analysis.features.intervals?.p_wave_duration_ms {
+                    AnalysisRow(
+                        icon: "waveform.badge.plus",
+                        label: "P Wave",
+                        value: String(format: "%.1f ms", pWave),
+                        color: .cyan,
+                        stats: analysis.stats_30d?.intervals?.p_wave_duration_ms
+                    )
+                }
+
+                // PR Interval
+                if let prInterval = analysis.features.intervals?.pr_interval_ms {
+                    let prColor: Color = prInterval > 200 ? .orange : (prInterval < 120 ? .orange : .indigo)
+                    AnalysisRow(
+                        icon: "arrow.right",
+                        label: "PR Interval",
+                        value: String(format: "%.1f ms", prInterval),
+                        color: prColor,
+                        stats: analysis.stats_30d?.intervals?.pr_interval_ms
+                    )
+                }
+
+                // PR Segment
+                if let prSegment = analysis.features.intervals?.pr_segment_ms {
+                    AnalysisRow(
+                        icon: "arrow.forward.to.line",
+                        label: "PR Segment",
+                        value: String(format: "%.1f ms", prSegment),
+                        color: .teal,
+                        stats: analysis.stats_30d?.intervals?.pr_segment_ms
+                    )
+                }
+
                 // QRS Duration
                 if let qrs = analysis.features.intervals?.qrs_duration_ms {
                     AnalysisRow(
@@ -324,6 +358,29 @@ struct AnalysisCard: View {
                         value: String(format: "%.1f ms", qrs),
                         color: .purple,
                         stats: analysis.stats_30d?.intervals?.qrs_duration_ms
+                    )
+                }
+
+                // ST Segment
+                if let stSegment = analysis.features.intervals?.st_segment_ms {
+                    let stColor: Color = (stSegment >= 80 && stSegment <= 120) ? .mint : .orange
+                    AnalysisRow(
+                        icon: "line.diagonal",
+                        label: "ST Segment",
+                        value: String(format: "%.1f ms", stSegment),
+                        color: stColor,
+                        stats: analysis.stats_30d?.intervals?.st_segment_ms
+                    )
+                }
+
+                // T Wave Duration
+                if let tWave = analysis.features.intervals?.t_wave_duration_ms {
+                    AnalysisRow(
+                        icon: "waveform.badge.minus",
+                        label: "T Wave",
+                        value: String(format: "%.1f ms", tWave),
+                        color: .pink,
+                        stats: analysis.stats_30d?.intervals?.t_wave_duration_ms
                     )
                 }
 
