@@ -9,8 +9,19 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
-    @StateObject private var analysisService = ECGAnalysisService()
+    @AppStorage("api_url") private var apiURL = "https://cyclingecg.onrender.com"
+    @AppStorage("api_key") private var apiKey = ""
+    @StateObject private var analysisService: ECGAnalysisService
     @State private var showingSettings = false
+
+    init() {
+        // Initialize with stored API settings
+        let url = UserDefaults.standard.string(forKey: "api_url") ?? "https://cyclingecg.onrender.com"
+        let key = UserDefaults.standard.string(forKey: "api_key")
+        let keyToUse = (key?.isEmpty == false) ? key : nil
+
+        _analysisService = StateObject(wrappedValue: ECGAnalysisService(baseURL: url, apiKey: keyToUse))
+    }
 
     var body: some View {
         NavigationView {
@@ -158,6 +169,8 @@ struct SettingsView: View {
                 Section {
                     Button("Save Settings") {
                         // Update the analysis service with new settings
+                        let keyToUse = apiKey.isEmpty ? nil : apiKey
+                        analysisService.updateConfiguration(baseURL: apiURL, apiKey: keyToUse)
                         dismiss()
                     }
                 }

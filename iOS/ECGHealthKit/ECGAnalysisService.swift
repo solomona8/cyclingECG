@@ -12,10 +12,17 @@ class ECGAnalysisService: ObservableObject {
     @Published var isAnalyzing = false
     @Published var analysisError: String?
 
-    private let baseURL: String
-    private let apiKey: String?
+    private var baseURL: String
+    private var apiKey: String?
 
     init(baseURL: String = "https://cyclingecg.onrender.com", apiKey: String? = nil) {
+        self.baseURL = baseURL
+        self.apiKey = apiKey
+    }
+
+    // MARK: - Configuration Update
+
+    func updateConfiguration(baseURL: String, apiKey: String?) {
         self.baseURL = baseURL
         self.apiKey = apiKey
     }
