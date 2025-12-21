@@ -32,12 +32,9 @@
 		A2000009000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A2000010000000000000001 /* ECGHealthKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ECGHealthKit.entitlements; sourceTree = "<group>"; };
 		A2000011000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-<<<<<<< HEAD
-		A3000001000000000000001 /* ECGHealthKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ECGHealthKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
-=======
 		A2000012000000000000001 /* AnalysisHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisHistoryManager.swift; sourceTree = "<group>"; };
 		A2000013000000000000001 /* MetricChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricChartView.swift; sourceTree = "<group>"; };
->>>>>>> 2d39febb009f9dfa112e87dc82462f5ef9b6a7ba
+		A3000001000000000000001 /* ECGHealthKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ECGHealthKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
