@@ -10,7 +10,7 @@ import HealthKit
 
 @MainActor
 final class HealthKitManager: ObservableObject {
-    nonisolated(unsafe) private let healthStore = HKHealthStore()
+    private let healthStore = HKHealthStore()
 
     @Published var ecgRecordings: [ECGRecording] = []
     @Published var isAuthorized = false
