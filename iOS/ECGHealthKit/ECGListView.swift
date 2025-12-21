@@ -10,6 +10,7 @@ import SwiftUI
 struct ECGListView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var analysisService: ECGAnalysisService
+    @EnvironmentObject var historyManager: AnalysisHistoryManager
 
     var body: some View {
         Group {
@@ -18,7 +19,8 @@ struct ECGListView: View {
             } else {
                 List(healthKitManager.ecgRecordings) { recording in
                     NavigationLink(destination: ECGDetailView(recording: recording)
-                        .environmentObject(analysisService)) {
+                        .environmentObject(analysisService)
+                        .environmentObject(historyManager)) {
                         ECGRecordingRow(recording: recording)
                     }
                 }
