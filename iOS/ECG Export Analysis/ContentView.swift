@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @StateObject private var analysisService = ECGAnalysisService()
+    @StateObject private var historyManager = AnalysisHistoryManager()
     @State private var showingSettings = false
 
     var body: some View {
@@ -22,6 +23,7 @@ struct ContentView: View {
                 } else {
                     ECGListView()
                         .environmentObject(analysisService)
+                        .environmentObject(historyManager)
                 }
             }
             .navigationTitle("ECG Recordings")
