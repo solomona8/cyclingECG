@@ -72,9 +72,13 @@ final class HealthKitManager: ObservableObject {
             let ecgType = HKObjectType.electrocardiogramType()
             let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
 
+            // Filter for most recent 30 days
+            let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+            let datePredicate = HKQuery.predicateForSamples(withStart: thirtyDaysAgo, end: nil, options: .strictStartDate)
+
             let query = HKSampleQuery(
                 sampleType: ecgType,
-                predicate: nil,
+                predicate: datePredicate,
                 limit: HKObjectQueryNoLimit,
                 sortDescriptors: [sortDescriptor]
             ) { query, samples, error in

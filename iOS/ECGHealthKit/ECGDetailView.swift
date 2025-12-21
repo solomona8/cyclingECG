@@ -143,6 +143,7 @@ struct AnalyzeButton: View {
     let recording: ECGRecording
 
     @EnvironmentObject var analysisService: ECGAnalysisService
+    @EnvironmentObject var historyManager: AnalysisHistoryManager
     @AppStorage("api_url") private var apiURL = "https://cyclingecg.onrender.com"
     @AppStorage("api_key") private var apiKey = ""
 
@@ -176,6 +177,7 @@ struct AnalyzeButton: View {
                     // Copy the published state
                     service.analysisResults = analysisService.analysisResults
 
+<<<<<<< HEAD
                     let _ = await service.analyzeECG(recording)
 
                     // Update the main service with all results
@@ -183,6 +185,27 @@ struct AnalyzeButton: View {
                         analysisService.analysisResults = service.analysisResults
                         analysisService.analysisError = service.analysisError
                         analysisService.isAnalyzing = false
+=======
+                        let result = await service.analyzeECG(recording)
+
+                        // Update the main service with all results
+                        await MainActor.run {
+                            analysisService.analysisResults = service.analysisResults
+                            analysisService.analysisError = service.analysisError
+                            analysisService.isAnalyzing = false
+
+                            // Save to history if analysis succeeded
+                            if let result = result {
+                                historyManager.saveAnalysis(result, recordingDate: recording.startDate)
+                            }
+                        }
+                    } catch {
+                        // Handle any unexpected errors
+                        await MainActor.run {
+                            analysisService.analysisError = "Analysis failed: \(error.localizedDescription)"
+                            analysisService.isAnalyzing = false
+                        }
+>>>>>>> 2d39febb009f9dfa112e87dc82462f5ef9b6a7ba
                     }
                 }
             }) {
@@ -281,7 +304,8 @@ struct AnalysisCard: View {
                         label: "Mean Heart Rate",
                         value: "\(Int(hrMean)) bpm",
                         color: .red,
-                        stats: analysis.stats_30d?.heart_rate_bpm?.mean
+                        stats: analysis.stats_30d?.heart_rate_bpm?.mean,
+                        metric: .heartRateMean
                     )
                 }
 
@@ -292,7 +316,8 @@ struct AnalysisCard: View {
                         label: "HRV SDNN",
                         value: String(format: "%.1f ms", sdnn),
                         color: .green,
-                        stats: analysis.stats_30d?.hrv?.sdnn_ms
+                        stats: analysis.stats_30d?.hrv?.sdnn_ms,
+                        metric: .hrvSDNN
                     )
                 }
 
@@ -303,7 +328,8 @@ struct AnalysisCard: View {
                         label: "HRV RMSSD",
                         value: String(format: "%.1f ms", rmssd),
                         color: .green,
-                        stats: analysis.stats_30d?.hrv?.rmssd_ms
+                        stats: analysis.stats_30d?.hrv?.rmssd_ms,
+                        metric: .hrvRMSSD
                     )
                 }
 
@@ -314,7 +340,8 @@ struct AnalysisCard: View {
                         label: "P Wave",
                         value: String(format: "%.1f ms", pWave),
                         color: .cyan,
-                        stats: analysis.stats_30d?.intervals?.p_wave_duration_ms
+                        stats: analysis.stats_30d?.intervals?.p_wave_duration_ms,
+                        metric: .pWaveDuration
                     )
                 }
 
@@ -326,7 +353,8 @@ struct AnalysisCard: View {
                         label: "PR Interval",
                         value: String(format: "%.1f ms", prInterval),
                         color: prColor,
-                        stats: analysis.stats_30d?.intervals?.pr_interval_ms
+                        stats: analysis.stats_30d?.intervals?.pr_interval_ms,
+                        metric: .prInterval
                     )
                 }
 
@@ -348,7 +376,8 @@ struct AnalysisCard: View {
                         label: "QRS Duration",
                         value: String(format: "%.1f ms", qrs),
                         color: .purple,
-                        stats: analysis.stats_30d?.intervals?.qrs_duration_ms
+                        stats: analysis.stats_30d?.intervals?.qrs_duration_ms,
+                        metric: .qrsDuration
                     )
                 }
 
@@ -360,7 +389,8 @@ struct AnalysisCard: View {
                         label: "ST Segment",
                         value: String(format: "%.1f ms", stSegment),
                         color: stColor,
-                        stats: analysis.stats_30d?.intervals?.st_segment_ms
+                        stats: analysis.stats_30d?.intervals?.st_segment_ms,
+                        metric: .stSegment
                     )
                 }
 
@@ -371,7 +401,8 @@ struct AnalysisCard: View {
                         label: "T Wave",
                         value: String(format: "%.1f ms", tWave),
                         color: .pink,
-                        stats: analysis.stats_30d?.intervals?.t_wave_duration_ms
+                        stats: analysis.stats_30d?.intervals?.t_wave_duration_ms,
+                        metric: .tWaveDuration
                     )
                 }
 
@@ -382,7 +413,8 @@ struct AnalysisCard: View {
                         label: "QT Interval",
                         value: String(format: "%.1f ms", qt),
                         color: .orange,
-                        stats: analysis.stats_30d?.intervals?.qt_interval_ms
+                        stats: analysis.stats_30d?.intervals?.qt_interval_ms,
+                        metric: .qtInterval
                     )
                 }
 
@@ -394,7 +426,8 @@ struct AnalysisCard: View {
                         label: "QTc (Bazett)",
                         value: String(format: "%.1f ms", qtc),
                         color: qtcColor,
-                        stats: analysis.stats_30d?.intervals?.qtc_ms
+                        stats: analysis.stats_30d?.intervals?.qtc_ms,
+                        metric: .qtcInterval
                     )
                 }
 
@@ -499,16 +532,33 @@ struct AnalysisRow: View {
     let value: String
     let color: Color
     let stats: MetricStats?
+    let metric: MetricType?
 
-    init(icon: String, label: String, value: String, color: Color, stats: MetricStats? = nil) {
+    @EnvironmentObject var historyManager: AnalysisHistoryManager
+
+    init(icon: String, label: String, value: String, color: Color, stats: MetricStats? = nil, metric: MetricType? = nil) {
         self.icon = icon
         self.label = label
         self.value = value
         self.color = color
         self.stats = stats
+        self.metric = metric
     }
 
     var body: some View {
+        Group {
+            if let metric = metric {
+                NavigationLink(destination: MetricChartView(metric: metric, historyManager: historyManager)) {
+                    rowContent
+                }
+                .buttonStyle(PlainButtonStyle())
+            } else {
+                rowContent
+            }
+        }
+    }
+
+    private var rowContent: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: icon)
@@ -538,6 +588,13 @@ struct AnalysisRow: View {
                     // Empty placeholder to maintain alignment
                     Text("")
                         .frame(width: 80, alignment: .center)
+                }
+
+                // Chevron for clickable metrics
+                if metric != nil {
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
 
