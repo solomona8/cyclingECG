@@ -14,10 +14,12 @@ class ECGAnalysisService: ObservableObject {
 
     private var baseURL: String
     private var apiKey: String?
+    private var fallbackURLs: [String] = []
 
     init(baseURL: String = "https://cyclingecg.onrender.com", apiKey: String? = nil) {
         self.baseURL = baseURL
         self.apiKey = apiKey
+        setupFallbackURLs()
     }
 
     // MARK: - Configuration Update
@@ -25,6 +27,18 @@ class ECGAnalysisService: ObservableObject {
     func updateConfiguration(baseURL: String, apiKey: String?) {
         self.baseURL = baseURL
         self.apiKey = apiKey
+        setupFallbackURLs()
+    }
+
+    private func setupFallbackURLs() {
+        fallbackURLs = []
+        // Add fallback URLs based on current backend
+        if baseURL.contains("localhost") || baseURL.contains("192.168") || baseURL.contains("127.0.0.1") {
+            // If local, fallback to cloud
+            fallbackURLs.append("https://cyclingecg.onrender.com")
+        } else if baseURL.contains("cyclingecg.onrender.com") {
+            // If cloud, no fallback (or could add alternative cloud URLs)
+        }
     }
 
     // MARK: - Analyze ECG
@@ -35,8 +49,35 @@ class ECGAnalysisService: ObservableObject {
             analysisError = nil
         }
 
+        // Try primary backend first
+        if let result = await analyzeECGWithURL(recording, url: baseURL) {
+            return result
+        }
+
+        // If primary failed and we have fallbacks, try them
+        for fallbackURL in fallbackURLs {
+            print("Primary backend failed, trying fallback: \(fallbackURL)")
+            await MainActor.run {
+                analysisError = "Primary backend unavailable, trying fallback..."
+            }
+
+            if let result = await analyzeECGWithURL(recording, url: fallbackURL) {
+                await MainActor.run {
+                    analysisError = "Note: Used fallback backend at \(fallbackURL)"
+                }
+                return result
+            }
+        }
+
+        // All backends failed
+        return nil
+    }
+
+    private func analyzeECGWithURL(_ recording: ECGRecording, url backendURL: String) async -> ECGAnalysisResponse? {
+
         // Validate that we have sufficient voltage measurements
         print("=== ECG DATA VALIDATION ===")
+        print("Backend URL: \(backendURL)")
         print("Recording ID: \(recording.id)")
         print("Voltage measurements count: \(recording.voltageMeasurements.count)")
         print("Sampling frequency: \(recording.samplingFrequency)")
@@ -60,18 +101,15 @@ class ECGAnalysisService: ObservableObject {
             return nil
         }
 
-        let apiRequest = recording.toAPIRequest(apiURL: baseURL)
+        let apiRequest = recording.toAPIRequest(apiURL: backendURL)
 
         // Log the request data
         print("Request data - samples: \(apiRequest.samples.count), sampling rate: \(apiRequest.sampling_rate_hz) Hz")
         print("=== END VALIDATION ===")
 
 
-        guard let url = URL(string: "\(baseURL)/v1/ecg/analyze") else {
-            await MainActor.run {
-                analysisError = "Invalid URL"
-                isAnalyzing = false
-            }
+        guard let url = URL(string: "\(backendURL)/v1/ecg/analyze") else {
+            print("ERROR: Invalid URL - \(backendURL)/v1/ecg/analyze")
             return nil
         }
 
@@ -103,10 +141,7 @@ class ECGAnalysisService: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                await MainActor.run {
-                    analysisError = "Invalid response from server"
-                    isAnalyzing = false
-                }
+                print("ERROR: Invalid response from server")
                 return nil
             }
 
@@ -125,10 +160,7 @@ class ECGAnalysisService: ObservableObject {
 
             guard httpResponse.statusCode == 200 else {
                 let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-                await MainActor.run {
-                    analysisError = "Server error (\(httpResponse.statusCode)): \(errorMessage)"
-                    isAnalyzing = false
-                }
+                print("ERROR: Server returned status \(httpResponse.statusCode): \(errorMessage)")
                 return nil
             }
 
@@ -156,10 +188,6 @@ class ECGAnalysisService: ObservableObject {
                         print("Unknown decoding error: \(decodingError)")
                     }
                 }
-                await MainActor.run {
-                    analysisError = "Failed to decode server response. Check console for details."
-                    isAnalyzing = false
-                }
                 return nil
             }
 
@@ -172,10 +200,6 @@ class ECGAnalysisService: ObservableObject {
 
         } catch {
             print("ERROR: Network or unknown error: \(error)")
-            await MainActor.run {
-                analysisError = "Analysis failed: \(error.localizedDescription)"
-                isAnalyzing = false
-            }
             return nil
         }
     }

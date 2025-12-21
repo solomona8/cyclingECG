@@ -44,6 +44,12 @@ class ExportManager {
         _ recording: ECGRecording,
         analysis: ECGAnalysisResponse?
     ) -> URL? {
+        // Validate we have measurements
+        guard !recording.voltageMeasurements.isEmpty else {
+            print("ERROR: Cannot export JSON - no voltage measurements")
+            return nil
+        }
+
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
@@ -54,14 +60,18 @@ class ExportManager {
             exportDate: Date()
         )
 
-        guard let jsonData = try? encoder.encode(exportData) else {
+        do {
+            let jsonData = try encoder.encode(exportData)
+            print("JSON Export: Successfully created \(jsonData.count) bytes of JSON data")
+
+            return saveToTemporaryFile(
+                data: jsonData,
+                filename: "ECG_\(recording.id).json"
+            )
+        } catch {
+            print("ERROR: Failed to encode JSON: \(error.localizedDescription)")
             return nil
         }
-
-        return saveToTemporaryFile(
-            data: jsonData,
-            filename: "ECG_\(recording.id).json"
-        )
     }
 
     // MARK: - CSV Export
@@ -70,23 +80,20 @@ class ExportManager {
         _ recording: ECGRecording,
         analysis: ECGAnalysisResponse?
     ) -> URL? {
-        var csvContent = "Timestamp (seconds),Voltage (microvolts)\n"
-
-        let timeInterval = recording.duration / Double(recording.voltageMeasurements.count - 1)
-
-        for (index, voltage) in recording.voltageMeasurements.enumerated() {
-            let time = Double(index) * timeInterval
-            let voltageInMicrovolts = voltage * 1_000_000
-            csvContent += "\(String(format: "%.6f", time)),\(String(format: "%.2f", voltageInMicrovolts))\n"
+        // Validate we have measurements
+        guard !recording.voltageMeasurements.isEmpty else {
+            print("ERROR: Cannot export CSV - no voltage measurements")
+            return nil
         }
 
-        // Add metadata as comments
+        // Add metadata as comments at the top
         var metadata = "# ECG Recording Metadata\n"
         metadata += "# Recording ID: \(recording.id)\n"
         metadata += "# Start Date: \(recording.startDate)\n"
         metadata += "# Duration: \(String(format: "%.2f", recording.duration)) seconds\n"
         metadata += "# Sampling Frequency: \(String(format: "%.2f", recording.samplingFrequency)) Hz\n"
         metadata += "# Classification: \(recording.classificationDescription)\n"
+        metadata += "# Number of Samples: \(recording.voltageMeasurements.count)\n"
 
         if let avgHR = recording.averageHeartRateBPM {
             metadata += "# Average Heart Rate: \(String(format: "%.1f", avgHR)) bpm\n"
@@ -102,15 +109,37 @@ class ExportManager {
             if let sdnn = analysis.features.hrv?.sdnn_ms {
                 metadata += "# HRV SDNN: \(String(format: "%.2f", sdnn)) ms\n"
             }
+
+            if let rmssd = analysis.features.hrv?.rmssd_ms {
+                metadata += "# HRV RMSSD: \(String(format: "%.2f", rmssd)) ms\n"
+            }
         }
 
         metadata += "#\n"
+        metadata += "# Data Format: Time (seconds), Voltage (microvolts)\n"
+        metadata += "#\n"
+
+        // CSV header
+        var csvContent = "Timestamp (seconds),Voltage (microvolts)\n"
+
+        // Calculate time interval between samples
+        let timeInterval = recording.duration / Double(recording.voltageMeasurements.count - 1)
+
+        // Export voltage measurements
+        for (index, voltage) in recording.voltageMeasurements.enumerated() {
+            let time = Double(index) * timeInterval
+            let voltageInMicrovolts = voltage * 1_000_000
+            csvContent += "\(String(format: "%.6f", time)),\(String(format: "%.2f", voltageInMicrovolts))\n"
+        }
 
         let fullCSV = metadata + csvContent
 
         guard let csvData = fullCSV.data(using: .utf8) else {
+            print("ERROR: Failed to encode CSV data as UTF-8")
             return nil
         }
+
+        print("CSV Export: Successfully created \(csvData.count) bytes of CSV data with \(recording.voltageMeasurements.count) samples")
 
         return saveToTemporaryFile(
             data: csvData,

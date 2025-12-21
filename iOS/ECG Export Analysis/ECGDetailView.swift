@@ -163,40 +163,31 @@ struct AnalyzeButton: View {
 
             Button(action: {
                 Task {
-                    // Set analyzing state on the environment object so UI updates
                     await MainActor.run {
                         analysisService.isAnalyzing = true
                         analysisService.analysisError = nil
                     }
 
-                    do {
-                        // Update service with current settings
-                        let service = ECGAnalysisService(
-                            baseURL: apiURL,
-                            apiKey: apiKey.isEmpty ? nil : apiKey
-                        )
+                    // Update service with current settings
+                    let service = ECGAnalysisService(
+                        baseURL: apiURL,
+                        apiKey: apiKey.isEmpty ? nil : apiKey
+                    )
 
-                        // Copy the published state
-                        service.analysisResults = analysisService.analysisResults
+                    // Copy the published state
+                    service.analysisResults = analysisService.analysisResults
 
-                        let result = await service.analyzeECG(recording)
+                    let result = await service.analyzeECG(recording)
 
-                        // Update the main service with all results
-                        await MainActor.run {
-                            analysisService.analysisResults = service.analysisResults
-                            analysisService.analysisError = service.analysisError
-                            analysisService.isAnalyzing = false
+                    // Update the main service with all results
+                    await MainActor.run {
+                        analysisService.analysisResults = service.analysisResults
+                        analysisService.analysisError = service.analysisError
+                        analysisService.isAnalyzing = false
 
-                            // Save to history if analysis succeeded
-                            if let result = result {
-                                historyManager.saveAnalysis(result, recordingDate: recording.startDate)
-                            }
-                        }
-                    } catch {
-                        // Handle any unexpected errors
-                        await MainActor.run {
-                            analysisService.analysisError = "Analysis failed: \(error.localizedDescription)"
-                            analysisService.isAnalyzing = false
+                        // Save to history if analysis succeeded
+                        if let result = result {
+                            historyManager.saveAnalysis(result, recordingDate: recording.startDate)
                         }
                     }
                 }
@@ -714,6 +705,7 @@ struct ExportOptionsView: View {
     @State private var selectedFormat: ExportManager.ExportFormat = .json
     @State private var isExporting = false
     @State private var exportError: String?
+    @State private var showSuccess = false
 
     var body: some View {
         NavigationView {
@@ -758,30 +750,64 @@ struct ExportOptionsView: View {
                 .padding()
 
                 if let error = exportError {
-                    Text(error)
-                        .foregroundColor(.red)
-                        .font(.caption)
-                        .padding()
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text(error)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    }
+                    .padding()
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                }
+
+                if showSuccess {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Export successful! Opening share sheet...")
+                            .foregroundColor(.green)
+                            .font(.caption)
+                    }
+                    .padding()
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(8)
+                    .padding(.horizontal)
                 }
 
                 Spacer()
 
-                Button(action: exportFile) {
-                    if isExporting {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Text("Export")
-                            .fontWeight(.semibold)
+                VStack(spacing: 8) {
+                    Button(action: exportFile) {
+                        HStack {
+                            if isExporting {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                Text("Exporting...")
+                            } else {
+                                Image(systemName: "square.and.arrow.up")
+                                Text("Export \(formatName)")
+                            }
+                        }
+                        .fontWeight(.semibold)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isExporting ? Color.gray : Color.blue)
+                    .cornerRadius(10)
+                    .disabled(isExporting)
+
+                    if analysis == nil && selectedFormat != .csv {
+                        Text("Note: Recording not analyzed yet. Analysis data will not be included.")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                            .multilineTextAlignment(.center)
                     }
                 }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue)
-                .cornerRadius(10)
-                .padding()
-                .disabled(isExporting)
             }
             .navigationTitle("Export ECG")
             .navigationBarTitleDisplayMode(.inline)
@@ -790,14 +816,25 @@ struct ExportOptionsView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .disabled(isExporting)
                 }
             }
+        }
+    }
+
+    private var formatName: String {
+        switch selectedFormat {
+        case .json: return "JSON"
+        case .csv: return "CSV"
+        case .pdf: return "PDF"
+        case .txt: return "Text"
         }
     }
 
     private func exportFile() {
         isExporting = true
         exportError = nil
+        showSuccess = false
 
         DispatchQueue.global(qos: .userInitiated).async {
             if let url = ExportManager.exportECGRecording(
@@ -807,13 +844,18 @@ struct ExportOptionsView: View {
             ) {
                 DispatchQueue.main.async {
                     isExporting = false
-                    dismiss()
-                    onExport(url)
+                    showSuccess = true
+
+                    // Brief delay to show success message
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        dismiss()
+                        onExport(url)
+                    }
                 }
             } else {
                 DispatchQueue.main.async {
                     isExporting = false
-                    exportError = "Failed to export file"
+                    exportError = "Failed to export file. Please try again or check console for details."
                 }
             }
         }
