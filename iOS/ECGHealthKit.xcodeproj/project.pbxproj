@@ -16,6 +16,8 @@
 		A1000007000000000000001 /* ECGListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000007000000000000001 /* ECGListView.swift */; };
 		A1000008000000000000001 /* ECGDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000008000000000000001 /* ECGDetailView.swift */; };
 		A1000009000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000011000000000000001 /* Assets.xcassets */; };
+		A1000012000000000000001 /* AnalysisHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000012000000000000001 /* AnalysisHistoryManager.swift */; };
+		A1000013000000000000001 /* MetricChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013000000000000001 /* MetricChartView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +33,8 @@
 		A2000009000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A2000010000000000000001 /* ECGHealthKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ECGHealthKit.entitlements; sourceTree = "<group>"; };
 		A2000011000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A2000012000000000000001 /* AnalysisHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisHistoryManager.swift; sourceTree = "<group>"; };
+		A2000013000000000000001 /* MetricChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricChartView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +84,7 @@
 			children = (
 				A2000007000000000000001 /* ECGListView.swift */,
 				A2000008000000000000001 /* ECGDetailView.swift */,
+				A2000013000000000000001 /* MetricChartView.swift */,
 			);
 			name = Views;
 			sourceTree = "<group>";
@@ -90,6 +95,7 @@
 				A2000003000000000000001 /* HealthKitManager.swift */,
 				A2000005000000000000001 /* ECGAnalysisService.swift */,
 				A2000006000000000000001 /* ExportManager.swift */,
+				A2000012000000000000001 /* AnalysisHistoryManager.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
@@ -180,6 +186,8 @@
 				A1000006000000000000001 /* ExportManager.swift in Sources */,
 				A1000007000000000000001 /* ECGListView.swift in Sources */,
 				A1000008000000000000001 /* ECGDetailView.swift in Sources */,
+				A1000012000000000000001 /* AnalysisHistoryManager.swift in Sources */,
+				A1000013000000000000001 /* MetricChartView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
