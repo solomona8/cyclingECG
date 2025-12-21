@@ -177,35 +177,18 @@ struct AnalyzeButton: View {
                     // Copy the published state
                     service.analysisResults = analysisService.analysisResults
 
-<<<<<<< HEAD
-                    let _ = await service.analyzeECG(recording)
+                    let result = await service.analyzeECG(recording)
 
                     // Update the main service with all results
                     await MainActor.run {
                         analysisService.analysisResults = service.analysisResults
                         analysisService.analysisError = service.analysisError
                         analysisService.isAnalyzing = false
-=======
-                        let result = await service.analyzeECG(recording)
 
-                        // Update the main service with all results
-                        await MainActor.run {
-                            analysisService.analysisResults = service.analysisResults
-                            analysisService.analysisError = service.analysisError
-                            analysisService.isAnalyzing = false
-
-                            // Save to history if analysis succeeded
-                            if let result = result {
-                                historyManager.saveAnalysis(result, recordingDate: recording.startDate)
-                            }
+                        // Save to history if analysis succeeded
+                        if let result = result {
+                            historyManager.saveAnalysis(result, recordingDate: recording.startDate)
                         }
-                    } catch {
-                        // Handle any unexpected errors
-                        await MainActor.run {
-                            analysisService.analysisError = "Analysis failed: \(error.localizedDescription)"
-                            analysisService.isAnalyzing = false
-                        }
->>>>>>> 2d39febb009f9dfa112e87dc82462f5ef9b6a7ba
                     }
                 }
             }) {
