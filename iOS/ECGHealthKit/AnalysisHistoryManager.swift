@@ -2,10 +2,11 @@
 //  AnalysisHistoryManager.swift
 //  ECG Export Analysis
 //
-//  Manages persistent storage and retrieval of ECG analysis results
+//  Manages persistent storage and retrieval of ECG analysis results with encryption
 //
 
 import Foundation
+import CryptoKit
 
 struct AnalysisHistoryItem: Codable, Identifiable {
     let id: String
@@ -63,34 +64,118 @@ class AnalysisHistoryManager: ObservableObject {
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(historyItems)
-            try data.write(to: fileURL)
-            print("Successfully saved \(historyItems.count) analysis history items")
+            let jsonData = try encoder.encode(historyItems)
+
+            // Encrypt the data before writing to disk
+            let encryptedData = try encryptData(jsonData)
+            try encryptedData.write(to: fileURL)
+
+            #if DEBUG
+            print("[STORAGE] Successfully saved \(historyItems.count) encrypted analysis history items")
+            #endif
         } catch {
-            print("Error saving analysis history: \(error)")
+            #if DEBUG
+            print("[STORAGE] Error saving analysis history: \(error)")
+            #endif
         }
     }
 
     private func loadHistory() {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            print("No existing analysis history file found")
+            #if DEBUG
+            print("[STORAGE] No existing analysis history file found")
+            #endif
             return
         }
 
         do {
-            let data = try Data(contentsOf: fileURL)
+            let encryptedData = try Data(contentsOf: fileURL)
+
+            // Try to decrypt the data (handles encrypted files)
+            let jsonData: Data
+            do {
+                jsonData = try decryptData(encryptedData)
+            } catch {
+                // If decryption fails, try to load as plaintext (migration from old format)
+                #if DEBUG
+                print("[STORAGE] Decryption failed, attempting to load as plaintext for migration")
+                #endif
+                jsonData = encryptedData
+            }
+
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            historyItems = try decoder.decode([AnalysisHistoryItem].self, from: data)
+            historyItems = try decoder.decode([AnalysisHistoryItem].self, from: jsonData)
 
             // Filter to last 90 days
             let ninetyDaysAgo = Calendar.current.date(byAdding: .day, value: -90, to: Date())!
             historyItems = historyItems.filter { $0.recordingDate >= ninetyDaysAgo }
 
-            print("Successfully loaded \(historyItems.count) analysis history items")
+            // If we successfully loaded plaintext data, re-save as encrypted
+            if encryptedData == jsonData {
+                #if DEBUG
+                print("[STORAGE] Migrating plaintext history to encrypted format")
+                #endif
+                persistHistory()
+            }
+
+            #if DEBUG
+            print("[STORAGE] Successfully loaded \(historyItems.count) encrypted analysis history items")
+            #endif
         } catch {
-            print("Error loading analysis history: \(error)")
+            #if DEBUG
+            print("[STORAGE] Error loading analysis history: \(error)")
+            #endif
             historyItems = []
+        }
+    }
+
+    // MARK: - Encryption
+
+    /// Encrypt data using AES-GCM with a key from Keychain
+    private func encryptData(_ data: Data) throws -> Data {
+        // Get or create encryption key from Keychain
+        let encryptionKey = try KeychainManager.shared.getOrCreateEncryptionKey()
+        let symmetricKey = SymmetricKey(data: encryptionKey)
+
+        // Encrypt using AES-GCM
+        let sealedBox = try AES.GCM.seal(data, using: symmetricKey)
+
+        // Return the combined nonce + ciphertext + tag
+        guard let combined = sealedBox.combined else {
+            throw EncryptionError.encryptionFailed
+        }
+
+        return combined
+    }
+
+    /// Decrypt data using AES-GCM with a key from Keychain
+    private func decryptData(_ encryptedData: Data) throws -> Data {
+        // Get encryption key from Keychain
+        let encryptionKey = try KeychainManager.shared.getOrCreateEncryptionKey()
+        let symmetricKey = SymmetricKey(data: encryptionKey)
+
+        // Decrypt using AES-GCM
+        let sealedBox = try AES.GCM.SealedBox(combined: encryptedData)
+        let decryptedData = try AES.GCM.open(sealedBox, using: symmetricKey)
+
+        return decryptedData
+    }
+
+    enum EncryptionError: Error {
+        case encryptionFailed
+        case decryptionFailed
+        case keyGenerationFailed
+
+        var localizedDescription: String {
+            switch self {
+            case .encryptionFailed:
+                return "Failed to encrypt data"
+            case .decryptionFailed:
+                return "Failed to decrypt data"
+            case .keyGenerationFailed:
+                return "Failed to generate encryption key"
+            }
         }
     }
 

@@ -119,11 +119,13 @@ final class HealthKitManager: ObservableObject {
             var voltageMeasurements: [Double] = []
             var samplingFrequency: Double = 0
 
+            #if DEBUG
             print("=== EXTRACTING ECG DATA ===")
             print("ECG ID: \(ecg.uuid.uuidString)")
             print("Start date: \(ecg.startDate)")
             print("End date: \(ecg.endDate)")
             print("Number of voltage measurements (metadata): \(ecg.numberOfVoltageMeasurements)")
+            #endif
 
             let query = HKElectrocardiogramQuery(ecg) { query, result in
                 switch result {
@@ -133,13 +135,16 @@ final class HealthKitManager: ObservableObject {
                         let voltage = voltageQuantity.doubleValue(for: HKUnit.volt())
                         voltageMeasurements.append(voltage)
 
-                        // Log first few samples to verify real ECG data
+                        #if DEBUG
+                        // Log first few samples to verify real ECG data (DEBUG ONLY - contains PHI)
                         if voltageMeasurements.count <= 5 || voltageMeasurements.count % 1000 == 0 {
                             print("[HEALTHKIT] Sample \(voltageMeasurements.count): \(voltage) V")
                         }
+                        #endif
                     } else {
-                        // This is important - if we can't get voltage, log it
+                        #if DEBUG
                         print("WARNING: Could not extract voltage from measurement")
+                        #endif
                     }
 
                 case .done:
@@ -149,12 +154,13 @@ final class HealthKitManager: ObservableObject {
                         samplingFrequency = Double(voltageMeasurements.count) / duration
                     }
 
+                    #if DEBUG
                     print("Extraction complete:")
                     print("- Extracted \(voltageMeasurements.count) voltage measurements")
                     print("- Expected \(ecg.numberOfVoltageMeasurements) measurements")
                     print("- Sampling frequency: \(samplingFrequency) Hz")
 
-                    // Calculate statistics to detect test data
+                    // Calculate statistics to detect test data (DEBUG ONLY - contains PHI)
                     if !voltageMeasurements.isEmpty {
                         let minVoltage = voltageMeasurements.min() ?? 0
                         let maxVoltage = voltageMeasurements.max() ?? 0
@@ -186,6 +192,7 @@ final class HealthKitManager: ObservableObject {
                     } else if voltageMeasurements.count < ecg.numberOfVoltageMeasurements {
                         print("WARNING: Extracted fewer measurements than expected")
                     }
+                    #endif
 
                     // Create ECG recording
                     let recording = ECGRecording(
@@ -203,7 +210,9 @@ final class HealthKitManager: ObservableObject {
                     continuation.resume(returning: recording)
 
                 case .error(let error):
+                    #if DEBUG
                     print("Error extracting ECG data: \(error.localizedDescription)")
+                    #endif
                     continuation.resume(returning: nil)
 
                 @unknown default:

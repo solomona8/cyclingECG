@@ -11,10 +11,14 @@ class ECGAnalysisService: ObservableObject {
     @Published var analysisResults: [String: ECGAnalysisResponse] = [:]
     @Published var isAnalyzing = false
     @Published var analysisError: String?
+    @Published var showFallbackConsentAlert = false
+    @Published var fallbackConsentGranted = false
 
     private var baseURL: String
     private var apiKey: String?
     private var fallbackURLs: [String] = []
+    private var pendingRecording: ECGRecording?
+    private var fallbackURL: String?
 
     init(baseURL: String = "https://cyclingecg.onrender.com", apiKey: String? = nil) {
         self.baseURL = baseURL
@@ -54,41 +58,99 @@ class ECGAnalysisService: ObservableObject {
             return result
         }
 
-        // If primary failed and we have fallbacks, try them
-        for fallbackURL in fallbackURLs {
-            print("Primary backend failed, trying fallback: \(fallbackURL)")
+        // If primary failed and we have fallbacks, request user consent
+        if !fallbackURLs.isEmpty {
+            #if DEBUG
+            print("Primary backend failed, requesting fallback consent")
+            #endif
+
+            // Request user consent for fallback
             await MainActor.run {
-                analysisError = "Primary backend unavailable, trying fallback..."
+                pendingRecording = recording
+                fallbackURL = fallbackURLs.first
+                showFallbackConsentAlert = true
+                analysisError = "Primary backend unavailable. Requesting permission to use fallback..."
             }
 
-            if let result = await analyzeECGWithURL(recording, url: fallbackURL) {
-                await MainActor.run {
-                    analysisError = "Note: Used fallback backend at \(fallbackURL)"
-                }
-                return result
+            // Wait for user decision (the UI will call proceedWithFallback or cancelFallback)
+            return nil
+        }
+
+        // No fallbacks available
+        await MainActor.run {
+            analysisError = "Backend unavailable and no fallback configured."
+            isAnalyzing = false
+        }
+        return nil
+    }
+
+    /// Called by UI when user grants consent to use fallback backend
+    func proceedWithFallback() async {
+        guard let recording = pendingRecording, let fallbackURL = fallbackURL else {
+            await MainActor.run {
+                analysisError = "Internal error: No pending fallback request"
+                isAnalyzing = false
+            }
+            return
+        }
+
+        #if DEBUG
+        print("User granted fallback consent, trying: \(fallbackURL)")
+        #endif
+
+        await MainActor.run {
+            analysisError = "Connecting to fallback backend..."
+        }
+
+        if let result = await analyzeECGWithURL(recording, url: fallbackURL) {
+            await MainActor.run {
+                analysisError = "✓ Analysis completed using fallback backend"
+                analysisResults[recording.id] = result
+            }
+        } else {
+            await MainActor.run {
+                analysisError = "Fallback backend also unavailable. Please try again later."
+                isAnalyzing = false
             }
         }
 
-        // All backends failed
-        return nil
+        // Clear pending request
+        await MainActor.run {
+            pendingRecording = nil
+            self.fallbackURL = nil
+        }
+    }
+
+    /// Called by UI when user denies consent to use fallback backend
+    func cancelFallback() async {
+        await MainActor.run {
+            analysisError = "Analysis cancelled. Primary backend unavailable."
+            isAnalyzing = false
+            pendingRecording = nil
+            fallbackURL = nil
+        }
     }
 
     private func analyzeECGWithURL(_ recording: ECGRecording, url backendURL: String) async -> ECGAnalysisResponse? {
 
-        // Validate that we have sufficient voltage measurements
+        #if DEBUG
+        // Validate that we have sufficient voltage measurements (DEBUG ONLY)
         print("=== ECG DATA VALIDATION ===")
         print("Backend URL: \(backendURL)")
         print("Recording ID: \(recording.id)")
         print("Voltage measurements count: \(recording.voltageMeasurements.count)")
         print("Sampling frequency: \(recording.samplingFrequency)")
         print("Duration: \(recording.duration) seconds")
+        #endif
 
         if recording.voltageMeasurements.isEmpty {
             await MainActor.run {
                 analysisError = "No voltage measurements found in this ECG recording. The ECG data may be corrupted or incomplete."
                 isAnalyzing = false
             }
+            #if DEBUG
             print("ERROR: Empty voltage measurements array")
+            #endif
             return nil
         }
 
@@ -97,19 +159,25 @@ class ECGAnalysisService: ObservableObject {
                 analysisError = "Insufficient ECG data: only \(recording.voltageMeasurements.count) samples (minimum 100 required). The recording may be too short or incomplete."
                 isAnalyzing = false
             }
+            #if DEBUG
             print("ERROR: Only \(recording.voltageMeasurements.count) samples, need at least 100")
+            #endif
             return nil
         }
 
         let apiRequest = recording.toAPIRequest(apiURL: backendURL)
 
-        // Log the request data
+        #if DEBUG
+        // Log the request data (DEBUG ONLY)
         print("Request data - samples: \(apiRequest.samples.count), sampling rate: \(apiRequest.sampling_rate_hz) Hz")
         print("=== END VALIDATION ===")
+        #endif
 
 
         guard let url = URL(string: "\(backendURL)/v1/ecg/analyze") else {
+            #if DEBUG
             print("ERROR: Invalid URL - \(backendURL)/v1/ecg/analyze")
+            #endif
             return nil
         }
 
@@ -128,24 +196,31 @@ class ECGAnalysisService: ObservableObject {
             // Encode the request with specific error handling
             do {
                 request.httpBody = try encoder.encode(apiRequest)
+                #if DEBUG
                 print("Successfully encoded request body (\(request.httpBody?.count ?? 0) bytes)")
+                #endif
             } catch {
                 await MainActor.run {
                     analysisError = "Failed to encode ECG data: \(error.localizedDescription)"
                     isAnalyzing = false
                 }
+                #if DEBUG
                 print("ERROR: Failed to encode API request: \(error)")
+                #endif
                 return nil
             }
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
+                #if DEBUG
                 print("ERROR: Invalid response from server")
+                #endif
                 return nil
             }
 
-            // DEBUG: Print raw response
+            #if DEBUG
+            // DEBUG: Print raw response (CONTAINS PHI - DEBUG ONLY!)
             print("=== SERVER RESPONSE DEBUG ===")
             print("Status code: \(httpResponse.statusCode)")
             print("Content-Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "none")")
@@ -157,10 +232,13 @@ class ECGAnalysisService: ObservableObject {
                 print("ERROR: Could not decode data as UTF-8 string")
             }
             print("=== END DEBUG ===")
+            #endif
 
             guard httpResponse.statusCode == 200 else {
+                #if DEBUG
                 let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
                 print("ERROR: Server returned status \(httpResponse.statusCode): \(errorMessage)")
+                #endif
                 return nil
             }
 
@@ -169,8 +247,11 @@ class ECGAnalysisService: ObservableObject {
             let analysisResponse: ECGAnalysisResponse
             do {
                 analysisResponse = try decoder.decode(ECGAnalysisResponse.self, from: data)
+                #if DEBUG
                 print("Successfully decoded analysis response")
+                #endif
             } catch {
+                #if DEBUG
                 print("ERROR: Failed to decode server response: \(error)")
                 if let decodingError = error as? DecodingError {
                     switch decodingError {
@@ -188,6 +269,7 @@ class ECGAnalysisService: ObservableObject {
                         print("Unknown decoding error: \(decodingError)")
                     }
                 }
+                #endif
                 return nil
             }
 
@@ -199,7 +281,9 @@ class ECGAnalysisService: ObservableObject {
             return analysisResponse
 
         } catch {
+            #if DEBUG
             print("ERROR: Network or unknown error: \(error)")
+            #endif
             return nil
         }
     }

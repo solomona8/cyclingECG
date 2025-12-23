@@ -46,7 +46,9 @@ class ExportManager {
     ) -> URL? {
         // Validate we have measurements
         guard !recording.voltageMeasurements.isEmpty else {
+            #if DEBUG
             print("ERROR: Cannot export JSON - no voltage measurements")
+            #endif
             return nil
         }
 
@@ -62,14 +64,18 @@ class ExportManager {
 
         do {
             let jsonData = try encoder.encode(exportData)
+            #if DEBUG
             print("JSON Export: Successfully created \(jsonData.count) bytes of JSON data")
+            #endif
 
             return saveToTemporaryFile(
                 data: jsonData,
                 filename: "ECG_\(recording.id).json"
             )
         } catch {
+            #if DEBUG
             print("ERROR: Failed to encode JSON: \(error.localizedDescription)")
+            #endif
             return nil
         }
     }
@@ -82,7 +88,9 @@ class ExportManager {
     ) -> URL? {
         // Validate we have measurements
         guard !recording.voltageMeasurements.isEmpty else {
+            #if DEBUG
             print("ERROR: Cannot export CSV - no voltage measurements")
+            #endif
             return nil
         }
 
@@ -135,11 +143,15 @@ class ExportManager {
         let fullCSV = metadata + csvContent
 
         guard let csvData = fullCSV.data(using: .utf8) else {
+            #if DEBUG
             print("ERROR: Failed to encode CSV data as UTF-8")
+            #endif
             return nil
         }
 
+        #if DEBUG
         print("CSV Export: Successfully created \(csvData.count) bytes of CSV data with \(recording.voltageMeasurements.count) samples")
+        #endif
 
         return saveToTemporaryFile(
             data: csvData,
@@ -437,7 +449,9 @@ class ExportManager {
             try data.write(to: fileURL)
             return fileURL
         } catch {
+            #if DEBUG
             print("Error saving file: \(error)")
+            #endif
             return nil
         }
     }

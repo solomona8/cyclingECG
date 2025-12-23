@@ -48,9 +48,16 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>NSHealthShareUsageDescription</key>
-    <string>This app needs access to your ECG recordings from Apple Watch to analyze and export them.</string>
+    <string>ECG HealthKit needs read-only access to your Apple Watch ECG recordings to:
+• Extract and analyze ECG waveforms and heart rate data
+• Calculate heart rate variability (HRV) metrics
+• Identify ECG patterns and intervals (P wave, QRS complex, QT interval)
+• Generate trend charts for the last 30 days
+• Export your ECG data in multiple formats (JSON, CSV, PDF)
+
+Your data is encrypted, stored locally on your device, and never shared without your explicit permission. We do not write or modify any health data.</string>
     <key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
-    <string>This app needs access to your health records to provide comprehensive ECG analysis.</string>
+    <string>This app may request access to clinical health records to provide enhanced context for ECG analysis. This is optional and not required for core functionality.</string>
     <key>UIBackgroundModes</key>
     <array>
         <string>fetch</string>

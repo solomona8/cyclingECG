@@ -75,6 +75,24 @@ struct ECGDetailView: View {
                 ShareSheet(items: [url])
             }
         }
+        .alert("Use Fallback Backend?", isPresented: $analysisService.showFallbackConsentAlert) {
+            Button("Allow", role: .none) {
+                Task {
+                    await analysisService.proceedWithFallback()
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                Task {
+                    await analysisService.cancelFallback()
+                }
+            }
+        } message: {
+            if let fallbackURL = analysisService.fallbackURL {
+                Text("The primary backend (\(apiURL)) is unavailable.\n\nYour ECG data can be sent to the fallback backend at:\n\(fallbackURL)\n\nThis will transmit your health data to a different server. Do you want to proceed?")
+            } else {
+                Text("The primary backend is unavailable. Would you like to use a fallback server?")
+            }
+        }
     }
 }
 

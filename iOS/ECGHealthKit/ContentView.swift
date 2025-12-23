@@ -128,11 +128,20 @@ struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
 
     @AppStorage("api_url") private var apiURL = "https://cyclingecg.onrender.com"
-    @AppStorage("api_key") private var apiKey = ""
     @AppStorage("backend_preset") private var backendPreset = "cloud"
+
+    // Securely store API key in Keychain instead of UserDefaults
+    @State private var apiKey = ""
 
     @State private var customURL = ""
     @State private var showingInfo = false
+    @State private var showingPrivacyPolicy = false
+    @State private var showingHTTPWarning = false
+
+    // Migration flag to check if we've migrated from old UserDefaults storage
+    @AppStorage("api_key_migrated") private var apiKeyMigrated = false
+    @AppStorage("has_accepted_privacy_policy") private var hasAcceptedPolicy = false
+    @AppStorage("http_warning_acknowledged") private var httpWarningAcknowledged = false
 
     enum BackendPreset: String, CaseIterable {
         case cloud = "cloud"
@@ -150,7 +159,7 @@ struct SettingsView: View {
         var defaultURL: String {
             switch self {
             case .cloud: return "https://cyclingecg.onrender.com"
-            case .local: return "http://192.168.1.100:8000"
+            case .local: return "https://192.168.1.100:8000"  // Changed to HTTPS for security
             case .custom: return ""
             }
         }
@@ -275,14 +284,31 @@ struct SettingsView: View {
                     }
                 }
 
+                Section(header: Text("Legal")) {
+                    Button(action: {
+                        showingPrivacyPolicy = true
+                    }) {
+                        HStack {
+                            Image(systemName: "hand.raised.fill")
+                                .foregroundColor(.blue)
+                            Text("Privacy Policy")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
                 Section {
                     Button(action: {
-                        // Update the analysis service with new settings
-                        analysisService.updateConfiguration(
-                            baseURL: apiURL,
-                            apiKey: apiKey.isEmpty ? nil : apiKey
-                        )
-                        dismiss()
+                        // Check if using HTTP (insecure)
+                        if apiURL.lowercased().hasPrefix("http://") && !httpWarningAcknowledged {
+                            showingHTTPWarning = true
+                        } else {
+                            saveSettings()
+                        }
                     }) {
                         HStack {
                             Spacer()
@@ -305,6 +331,102 @@ struct SettingsView: View {
             .sheet(isPresented: $showingInfo) {
                 LocalBackendInfoView()
             }
+            .sheet(isPresented: $showingPrivacyPolicy) {
+                PrivacyPolicyView(hasAcceptedPolicy: $hasAcceptedPolicy, isFirstLaunch: false)
+            }
+            .alert("Insecure Connection Warning", isPresented: $showingHTTPWarning) {
+                Button("Use HTTP Anyway (Not Recommended)", role: .destructive) {
+                    httpWarningAcknowledged = true
+                    saveSettings()
+                }
+                Button("Cancel", role: .cancel) {
+                    // Don't save, keep showing warning
+                    httpWarningAcknowledged = false
+                }
+                Button("Switch to HTTPS", role: .cancel) {
+                    // Update URL to use HTTPS
+                    apiURL = apiURL.replacingOccurrences(of: "http://", with: "https://")
+                    saveSettings()
+                }
+            } message: {
+                Text("⚠️ You are trying to use an unencrypted HTTP connection.\n\nYour ECG data (Protected Health Information) will be transmitted without encryption, making it vulnerable to interception.\n\n• Man-in-the-middle attacks\n• Network sniffing\n• Data exposure on shared WiFi\n\nWe strongly recommend using HTTPS for all connections.")
+            }
+            .onAppear {
+                loadAPIKeyFromKeychain()
+                migrateAPIKeyIfNeeded()
+            }
+        }
+    }
+
+    // MARK: - Settings Management
+
+    /// Save all settings (API key, URL, backend configuration)
+    private func saveSettings() {
+        // Save API key to Keychain (secure storage)
+        saveAPIKeyToKeychain()
+
+        // Update the analysis service with new settings
+        analysisService.updateConfiguration(
+            baseURL: apiURL,
+            apiKey: apiKey.isEmpty ? nil : apiKey
+        )
+        dismiss()
+    }
+
+    // MARK: - Keychain Management
+
+    /// Load API key from Keychain on view appear
+    private func loadAPIKeyFromKeychain() {
+        if let savedKey = KeychainManager.shared.getAPIKey() {
+            apiKey = savedKey
+        }
+    }
+
+    /// Migrate API key from UserDefaults to Keychain (one-time migration)
+    private func migrateAPIKeyIfNeeded() {
+        guard !apiKeyMigrated else { return }
+
+        // Check if old API key exists in UserDefaults
+        if let oldKey = UserDefaults.standard.string(forKey: "api_key"), !oldKey.isEmpty {
+            // Migrate to Keychain
+            do {
+                try KeychainManager.shared.saveAPIKey(oldKey)
+                apiKey = oldKey
+
+                // Remove from UserDefaults
+                UserDefaults.standard.removeObject(forKey: "api_key")
+
+                // Mark migration as complete
+                apiKeyMigrated = true
+
+                #if DEBUG
+                print("[SECURITY] Successfully migrated API key from UserDefaults to Keychain")
+                #endif
+            } catch {
+                #if DEBUG
+                print("[SECURITY] Failed to migrate API key: \(error.localizedDescription)")
+                #endif
+            }
+        } else {
+            // No old key to migrate, mark as migrated
+            apiKeyMigrated = true
+        }
+    }
+
+    /// Save API key to Keychain when settings are saved
+    private func saveAPIKeyToKeychain() {
+        do {
+            if apiKey.isEmpty {
+                // Delete key if empty
+                try? KeychainManager.shared.deleteAPIKey()
+            } else {
+                // Save or update key
+                try KeychainManager.shared.saveAPIKey(apiKey)
+            }
+        } catch {
+            #if DEBUG
+            print("[SECURITY] Failed to save API key to Keychain: \(error.localizedDescription)")
+            #endif
         }
     }
 }
