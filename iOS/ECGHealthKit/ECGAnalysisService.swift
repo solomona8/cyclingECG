@@ -18,7 +18,7 @@ class ECGAnalysisService: ObservableObject {
     private var apiKey: String?
     private var fallbackURLs: [String] = []
     private var pendingRecording: ECGRecording?
-    private var fallbackURL: String?
+    var fallbackURL: String?
 
     init(baseURL: String = "https://cyclingecg.onrender.com", apiKey: String? = nil) {
         self.baseURL = baseURL
