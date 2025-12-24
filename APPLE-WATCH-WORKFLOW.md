@@ -346,7 +346,7 @@ Open in browser: http://localhost:8000/docs
 - ✅ Verify recordings appear in Health app
 
 #### "Authorization failed"
-- ✅ Go to Settings → Privacy & Security → Health → ECG HealthKit
+- ✅ Go to Settings → Privacy & Security → Health → ECG Analyzer
 - ✅ Enable "Electrocardiograms" for reading
 - ✅ Delete and reinstall app if needed
 

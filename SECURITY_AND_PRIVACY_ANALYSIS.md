@@ -1,15 +1,15 @@
-# ECG HealthKit App - Comprehensive Security and Privacy Analysis Report
+# ECG Analyzer App - Comprehensive Security and Privacy Analysis Report
 
-**Date:** December 23, 2025  
-**Repository:** cyclingECG  
-**Branch:** claude/apple-watch-data-extraction-01GXvTS5e9r2psgrXhe73bva  
+**Date:** December 23, 2025
+**Repository:** cyclingECG
+**Branch:** claude/apple-watch-data-extraction-01GXvTS5e9r2psgrXhe73bva
 **Status:** Development
 
 ---
 
 ## Executive Summary
 
-The ECG HealthKit app is a native iOS application that extracts Apple Watch ECG recordings from HealthKit, analyzes them via a backend FastAPI service, and provides export capabilities in multiple formats. While the app demonstrates good use of iOS security frameworks and HTTPS communication, there are **critical security gaps** requiring immediate attention before production deployment.
+The ECG Analyzer app is a native iOS application that extracts Apple Watch ECG recordings from HealthKit, analyzes them via a backend FastAPI service, and provides export capabilities in multiple formats. While the app demonstrates good use of iOS security frameworks and HTTPS communication, there are **critical security gaps** requiring immediate attention before production deployment.
 
 ### Key Findings:
 - **CRITICAL:** No encryption for sensitive health data at rest on device
@@ -512,7 +512,7 @@ The app includes privacy statement in documentation:
 ### Privacy Policy Template (Required)
 
 ```
-PRIVACY POLICY - ECG HealthKit App
+PRIVACY POLICY - ECG Analyzer App
 
 1. DATA COLLECTION
    - App collects ECG recordings, heart rate, and timestamps from your Apple Watch via HealthKit
@@ -1614,7 +1614,7 @@ Level 4: Optimized (Target in 12+ months)
 
 ### Summary of Findings
 
-The **ECG HealthKit app demonstrates good security practices in some areas** (HTTPS, permission handling, read-only HealthKit access) but **has critical gaps** in data protection at rest (unencrypted storage, plaintext API keys, unencrypted database).
+The **ECG Analyzer app demonstrates good security practices in some areas** (HTTPS, permission handling, read-only HealthKit access) but **has critical gaps** in data protection at rest (unencrypted storage, plaintext API keys, unencrypted database).
 
 ### Key Risks
 

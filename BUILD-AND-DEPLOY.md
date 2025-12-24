@@ -243,7 +243,7 @@ curl -X POST 'https://cyclingecg.onrender.com/v1/ecg/analyze' \
 
 ### 2. Test iOS App
 
-1. Open ECG HealthKit app on iPhone
+1. Open ECG Analyzer app on iPhone
 2. Select an ECG recording
 3. Tap "Analyze Now"
 4. Verify:

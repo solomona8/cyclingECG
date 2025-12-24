@@ -1,4 +1,4 @@
-# ECG HealthKit App - App Store Submission Checklist
+# ECG Analyzer App - App Store Submission Checklist
 
 **Last Updated:** December 23, 2025
 **App Version:** 1.0.0
@@ -8,7 +8,7 @@
 
 ## EXECUTIVE SUMMARY
 
-This checklist guides you through preparing your ECG HealthKit app for Apple App Store submission, with particular focus on:
+This checklist guides you through preparing your ECG Analyzer app for Apple App Store submission, with particular focus on:
 - **PHI Security & HIPAA Compliance**
 - **Apple Health App Requirements (Section 5.1.3)**
 - **Technical Submission Requirements**
@@ -731,7 +731,7 @@ func analyzeECG(_ recording: ECGRecording) async -> ECGAnalysisResponse? {
 **Action Required:**
 - [ ] Create App Record in App Store Connect
 - [ ] Set Bundle Identifier: `com.yourcompany.ecghealthkit` (must match Xcode)
-- [ ] Choose App Name: "ECG HealthKit Analyzer" or similar
+- [ ] Choose App Name: "ECG Analyzer"
 - [ ] Select Primary Category: Health & Fitness
 - [ ] Select Secondary Category: Medical (if applicable)
 - [ ] Set Age Rating: 12+ or 17+ (due to medical content)
@@ -776,7 +776,7 @@ func analyzeECG(_ recording: ECGRecording) async -> ECGAnalysisResponse? {
 
 **Description Template:**
 ```
-ECG HealthKit Analyzer helps you understand your Apple Watch ECG recordings with advanced metrics and trend analysis.
+ECG Analyzer helps you understand your Apple Watch ECG recordings with advanced metrics and trend analysis.
 
 FEATURES:
 • View all your Apple Watch ECG recordings in one place
