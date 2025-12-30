@@ -5,7 +5,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>ECG Analyzer</string>
+    <string>ECG Insights</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -48,7 +48,7 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>NSHealthShareUsageDescription</key>
-    <string>ECG Analyzer needs read-only access to your Apple Watch ECG recordings to:
+    <string>ECG Insights needs read-only access to your Apple Watch ECG recordings to:
 • Extract and analyze ECG waveforms and heart rate data
 • Calculate heart rate variability (HRV) metrics
 • Identify ECG patterns and intervals (P wave, QRS complex, QT interval)

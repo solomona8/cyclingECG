@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  ECGHealthKit
 //
-//  Main view for the ECG Analyzer app
+//  Main view for the ECG Insights app
 //
 
 import SwiftUI

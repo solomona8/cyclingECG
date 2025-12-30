@@ -20,7 +20,7 @@ except Exception as e:
     save_analysis = None
     get_30day_stats_for_all_metrics = None
 
-app = FastAPI(title="ECG Analyzer", version="1.0.0")
+app = FastAPI(title="ECG Insights", version="1.0.0")
 
 # Initialize database on startup
 @app.on_event("startup")

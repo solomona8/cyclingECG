@@ -1,5 +1,5 @@
 
-# ECG Analyzer Minimal Backend
+# ECG Insights Minimal Backend
 
 A tiny FastAPI service exposing two endpoints to integrate your Lovable UI with a real API.
 

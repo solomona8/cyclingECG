@@ -1,6 +1,6 @@
 # Hybrid Approach for Apple Watch ECG Data Extraction
 
-This document describes the hybrid approach implemented in the ECG Analyzer iOS app, providing flexibility for both backend connectivity and data export.
+This document describes the hybrid approach implemented in the ECG Insights iOS app, providing flexibility for both backend connectivity and data export.
 
 ## Overview
 
@@ -416,4 +416,4 @@ The hybrid approach provides:
 ✅ **Easy configuration**: Intuitive UI with helpful guides
 ✅ **Professional quality**: Ready for both casual and clinical use
 
-This implementation ensures the ECG Analyzer app works reliably in various scenarios while providing users with maximum flexibility and control over their data.
+This implementation ensures the ECG Insights app works reliably in various scenarios while providing users with maximum flexibility and control over their data.

@@ -283,7 +283,7 @@ class ExportManager {
         analysis: ECGAnalysisResponse?
     ) -> URL? {
         let pdfMetaData = [
-            kCGPDFContextCreator: "ECG Analyzer App",
+            kCGPDFContextCreator: "ECG Insights App",
             kCGPDFContextAuthor: "Apple Watch",
             kCGPDFContextTitle: "ECG Recording Report"
         ]

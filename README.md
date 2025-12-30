@@ -1,5 +1,5 @@
 
-# Cloud ECG Analyzer (features + optional GPT narrative)
+# Cloud ECG Insights (features + optional GPT narrative)
 
 This backend computes deterministic ECG features from Apple Watch single‑lead data and (optionally) calls OpenAI to generate a patient‑friendly narrative.
 

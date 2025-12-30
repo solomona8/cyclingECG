@@ -1,4 +1,4 @@
-# ECG Analyzer App - Comprehensive Security and Privacy Analysis Report
+# ECG Insights App - Comprehensive Security and Privacy Analysis Report
 
 **Date:** December 23, 2025
 **Repository:** cyclingECG
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The ECG Analyzer app is a native iOS application that extracts Apple Watch ECG recordings from HealthKit, analyzes them via a backend FastAPI service, and provides export capabilities in multiple formats. While the app demonstrates good use of iOS security frameworks and HTTPS communication, there are **critical security gaps** requiring immediate attention before production deployment.
+The ECG Insights app is a native iOS application that extracts Apple Watch ECG recordings from HealthKit, analyzes them via a backend FastAPI service, and provides export capabilities in multiple formats. While the app demonstrates good use of iOS security frameworks and HTTPS communication, there are **critical security gaps** requiring immediate attention before production deployment.
 
 ### Key Findings:
 - **CRITICAL:** No encryption for sensitive health data at rest on device
@@ -512,7 +512,7 @@ The app includes privacy statement in documentation:
 ### Privacy Policy Template (Required)
 
 ```
-PRIVACY POLICY - ECG Analyzer App
+PRIVACY POLICY - ECG Insights App
 
 1. DATA COLLECTION
    - App collects ECG recordings, heart rate, and timestamps from your Apple Watch via HealthKit
@@ -574,7 +574,7 @@ from fastapi import FastAPI, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
-app = FastAPI(title="ECG Analyzer", version="1.0.0")
+app = FastAPI(title="ECG Insights", version="1.0.0")
 
 @app.on_event("startup")
 async def startup_event():
@@ -1614,7 +1614,7 @@ Level 4: Optimized (Target in 12+ months)
 
 ### Summary of Findings
 
-The **ECG Analyzer app demonstrates good security practices in some areas** (HTTPS, permission handling, read-only HealthKit access) but **has critical gaps** in data protection at rest (unencrypted storage, plaintext API keys, unencrypted database).
+The **ECG Insights app demonstrates good security practices in some areas** (HTTPS, permission handling, read-only HealthKit access) but **has critical gaps** in data protection at rest (unencrypted storage, plaintext API keys, unencrypted database).
 
 ### Key Risks
 

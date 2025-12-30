@@ -1,4 +1,4 @@
-# ECG Analyzer iOS App
+# ECG Insights iOS App
 
 A native iOS application that extracts Apple Watch ECG recordings from HealthKit, analyzes them using the cyclingECG backend, and provides comprehensive export capabilities.
 
@@ -258,7 +258,7 @@ See `Models.swift` for complete response structure including:
 - Check backend logs for errors
 
 ### Authorization Issues
-- Go to iPhone Settings > Privacy & Security > Health > ECG Analyzer
+- Go to iPhone Settings > Privacy & Security > Health > ECG Insights
 - Ensure "Electrocardiograms" is enabled for reading
 - Try deleting and reinstalling the app
 

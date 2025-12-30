@@ -7,7 +7,7 @@ import os
 from fastapi import UploadFile, File, Form
 import io, csv
 
-app = FastAPI(title="ECG Analyzer", version="1.0.0")
+app = FastAPI(title="ECG Insights", version="1.0.0")
 
 # in app/main.py near the top, after app = FastAPI(...)
 @app.get("/")

@@ -1,6 +1,6 @@
 # Phase 2: App Store Connect Setup Guide
 
-**App Name:** ECG Analyzer
+**App Name:** ECG Insights
 **Bundle ID:** com.cyclingecg.ECGHealthKit
 **Version:** 1.0.0
 **Build:** 1
@@ -27,7 +27,7 @@
 
 3. **Fill in Basic Information**
    - **Platform:** iOS
-   - **Name:** ECG Analyzer
+   - **Name:** ECG Insights
    - **Primary Language:** English (US)
    - **Bundle ID:** Select `com.cyclingecg.ECGHealthKit` from dropdown
      - ⚠️ If not in dropdown, you need to register it in Apple Developer Portal first
@@ -44,7 +44,7 @@ If Bundle ID doesn't appear in dropdown:
 2. Click "+" to create new identifier
 3. Select "App IDs" → Continue
 4. Type: App
-5. Description: ECG Analyzer
+5. Description: ECG Insights
 6. Bundle ID: `com.cyclingecg.ECGHealthKit` (Explicit)
 7. **Capabilities to enable:**
    - [x] HealthKit
@@ -58,7 +58,7 @@ If Bundle ID doesn't appear in dropdown:
 
 ### App Information
 
-**App Name:** ECG Analyzer
+**App Name:** ECG Insights
 **Subtitle (30 chars max):** Apple Watch ECG Analysis
 
 **Category:**
@@ -83,7 +83,7 @@ If Bundle ID doesn't appear in dropdown:
 ### App Description (Max 4000 characters)
 
 ```
-ECG Analyzer helps you understand your Apple Watch ECG recordings with advanced metrics and trend analysis.
+ECG Insights helps you understand your Apple Watch ECG recordings with advanced metrics and trend analysis.
 
 FEATURES
 
@@ -147,7 +147,7 @@ We take your health data privacy seriously:
 
 ABOUT THE ANALYSIS
 
-ECG Analyzer uses signal processing algorithms to:
+ECG Insights uses signal processing algorithms to:
 • Detect R-peaks using Pan-Tompkins algorithm
 • Calculate heart rate and rhythm metrics
 • Analyze waveform intervals and morphology

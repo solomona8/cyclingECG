@@ -1,6 +1,6 @@
-# ECG Analyzer - Documentation
+# ECG Insights - Documentation
 
-This directory contains the GitHub Pages website for ECG Analyzer.
+This directory contains the GitHub Pages website for ECG Insights.
 
 ## Pages
 
