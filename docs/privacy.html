@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - ECG Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f7;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #1d1d1f;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .last-updated {
+            color: #86868b;
+            font-size: 0.9em;
+            margin-bottom: 30px;
+        }
+
+        .disclaimer {
+            background-color: #fff3cd;
+            border-left: 4px solid #ff9500;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 8px;
+        }
+
+        .disclaimer-title {
+            font-weight: bold;
+            color: #ff9500;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .disclaimer-title::before {
+            content: "⚠️";
+            margin-right: 8px;
+        }
+
+        h2 {
+            color: #1d1d1f;
+            font-size: 1.5em;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0071e3;
+        }
+
+        h3 {
+            color: #1d1d1f;
+            font-size: 1.2em;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+        }
+
+        ul {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+            color: #515154;
+        }
+
+        .section {
+            margin: 30px 0;
+        }
+
+        .contact-info {
+            background-color: #f5f5f7;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .contact-info strong {
+            color: #0071e3;
+        }
+
+        a {
+            color: #0071e3;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #d2d2d7;
+            text-align: center;
+            color: #86868b;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Privacy Policy</h1>
+        <p class="last-updated">Last Updated: December 2024</p>
+
+        <div class="disclaimer">
+            <div class="disclaimer-title">Medical Disclaimer</div>
+            <p>This app is for informational purposes only and is NOT a medical device. Do not use this app for medical diagnosis or treatment decisions. Always consult with a qualified healthcare provider for medical advice.</p>
+        </div>
+
+        <div class="section">
+            <h2>1. What Data We Collect</h2>
+            <p>We collect and process the following data:</p>
+            <ul>
+                <li>ECG (electrocardiogram) recordings from Apple Watch</li>
+                <li>Recording timestamps and metadata</li>
+                <li>Calculated heart rate and rhythm metrics</li>
+                <li>Heart rate variability (HRV) measurements</li>
+                <li>ECG waveform characteristics (P wave, QRS, QT intervals)</li>
+            </ul>
+
+            <h3>We do NOT collect:</h3>
+            <ul>
+                <li>Personal identifying information (name, email, phone)</li>
+                <li>Location data</li>
+                <li>Contacts or photos</li>
+                <li>Any data from other apps</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>2. How We Use Your Data</h2>
+            <p>Your health data is used exclusively for:</p>
+            <ul>
+                <li>Analyzing ECG waveforms and detecting patterns</li>
+                <li>Calculating heart rate metrics and trends</li>
+                <li>Generating analysis reports for your review</li>
+                <li>Creating historical trend charts (stored locally)</li>
+            </ul>
+
+            <h3>We do NOT:</h3>
+            <ul>
+                <li>Sell your data to third parties</li>
+                <li>Use your data for advertising</li>
+                <li>Share your data with insurance companies</li>
+                <li>Store your data permanently on our servers</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>3. Where Your Data Is Stored</h2>
+
+            <h3>Local Storage (On Your Device):</h3>
+            <ul>
+                <li>Analysis history for the last 90 days</li>
+                <li>Encrypted using AES-256-GCM encryption</li>
+                <li>Stored in app's secure sandbox</li>
+                <li>Protected by iOS security features</li>
+            </ul>
+
+            <h3>Backend Server (Optional):</h3>
+            <ul>
+                <li>When you request analysis, ECG data is sent to our backend server</li>
+                <li>Data is transmitted over encrypted HTTPS connection</li>
+                <li>Server processes the data and immediately returns results</li>
+                <li>Data retention: 30 days maximum, then automatically deleted</li>
+                <li>You can use a local backend to keep all data on your network</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>4. Third-Party Services</h2>
+
+            <h3>OpenAI Integration (Optional):</h3>
+            <p>If enabled in backend configuration, anonymized ECG metrics (NOT raw waveforms) may be sent to OpenAI to generate narrative summaries. This feature is:</p>
+            <ul>
+                <li>Opt-in only (disabled by default)</li>
+                <li>Configured by backend administrator</li>
+                <li>Does NOT include personally identifiable information</li>
+                <li>Governed by OpenAI's privacy policy</li>
+            </ul>
+
+            <h3>Cloud Hosting:</h3>
+            <p>Our default backend is hosted on Render.com. Data is:</p>
+            <ul>
+                <li>Encrypted in transit (HTTPS/TLS)</li>
+                <li>Stored temporarily in memory during processing</li>
+                <li>Automatically deleted after 30 days</li>
+                <li>Not shared with Render.com for any purpose</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>5. Your Privacy Rights (GDPR/CCPA)</h2>
+            <p>You have the following rights regarding your data:</p>
+
+            <h3>Right to Access:</h3>
+            <ul>
+                <li>View all your stored analysis history in the app</li>
+                <li>Export your data in JSON, CSV, or PDF format</li>
+            </ul>
+
+            <h3>Right to Delete:</h3>
+            <ul>
+                <li>Swipe to delete individual analysis records</li>
+                <li>Uninstall the app to delete all local data</li>
+                <li>Contact us to delete data from backend servers</li>
+            </ul>
+
+            <h3>Right to Portability:</h3>
+            <ul>
+                <li>Export your data in machine-readable formats</li>
+                <li>Transfer data to other health applications</li>
+            </ul>
+
+            <h3>Right to Opt-Out:</h3>
+            <ul>
+                <li>Use local backend to prevent cloud data transmission</li>
+                <li>Disable backend analysis entirely (app still functions)</li>
+            </ul>
+
+            <h3>Right to Object:</h3>
+            <ul>
+                <li>Revoke HealthKit permissions in iOS Settings</li>
+                <li>Request deletion of all backend data</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>6. Data Retention</h2>
+
+            <h3>Local Device:</h3>
+            <ul>
+                <li>Analysis history retained for 90 days</li>
+                <li>Older records automatically deleted</li>
+                <li>Deleted immediately when app is uninstalled</li>
+            </ul>
+
+            <h3>Backend Server:</h3>
+            <ul>
+                <li>Analysis results stored for maximum 30 days</li>
+                <li>Automatic deletion after retention period</li>
+                <li>You can request immediate deletion by contacting us</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>7. Security Measures</h2>
+            <p>We implement industry-standard security practices:</p>
+            <ul>
+                <li>AES-256-GCM encryption for local data storage</li>
+                <li>TLS 1.3 encryption for network transmission</li>
+                <li>API keys stored in iOS Keychain (not plaintext)</li>
+                <li>Regular security audits and updates</li>
+                <li>No debug logging of health data in production</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>8. Children's Privacy</h2>
+            <p>This app is not intended for children under 13 years of age. We do not knowingly collect data from children. Apple Watch ECG feature requires users to be 22 years or older in most regions.</p>
+        </div>
+
+        <div class="section">
+            <h2>9. International Data Transfers</h2>
+            <p>If you use the cloud backend, your data may be processed on servers located in the United States or other countries. We ensure appropriate safeguards are in place:</p>
+            <ul>
+                <li>Encryption in transit and at rest</li>
+                <li>Limited data retention periods</li>
+                <li>Compliance with GDPR and CCPA requirements</li>
+                <li>Option to use local backend for data sovereignty</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>10. Changes to This Policy</h2>
+            <p>We may update this privacy policy periodically. Changes will be:</p>
+            <ul>
+                <li>Communicated through app updates</li>
+                <li>Posted with a new "Last Updated" date</li>
+                <li>Requiring re-acceptance for material changes</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>11. Contact Us</h2>
+            <p>For privacy-related questions, data deletion requests, or GDPR/CCPA inquiries:</p>
+
+            <div class="contact-info">
+                <p><strong>Email:</strong> <a href="mailto:privacy@cyclingecg.app">privacy@cyclingecg.app</a></p>
+                <p><strong>Support:</strong> <a href="https://github.com/solomona8/cyclingECG/issues">GitHub Issues</a></p>
+                <p><strong>Data Protection Officer:</strong> Available upon request</p>
+                <p><strong>Response time:</strong> We respond to privacy requests within 30 days as required by GDPR.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>12. Governing Law</h2>
+            <p>This privacy policy is governed by applicable data protection laws including:</p>
+            <ul>
+                <li>GDPR (General Data Protection Regulation) - EU</li>
+                <li>CCPA (California Consumer Privacy Act) - California, USA</li>
+                <li>HIPAA (where applicable) - USA</li>
+                <li>Local health data protection regulations</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2024 ECG Analyzer. All rights reserved.</p>
+            <p><a href="index.html">Home</a> | <a href="privacy.html">Privacy Policy</a> | <a href="support.html">Support</a></p>
+        </div>
+    </div>
+</body>
+</html>

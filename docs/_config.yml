@@ -1,0 +1,7 @@
+# GitHub Pages configuration for ECG Analyzer
+title: ECG Analyzer
+description: Advanced Apple Watch ECG analysis with privacy-first design
+show_downloads: false
+
+# Theme (optional - using default)
+# theme: jekyll-theme-minimal
