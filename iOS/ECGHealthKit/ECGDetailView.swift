@@ -234,41 +234,45 @@ struct AnalysisCard: View {
 
                 // Rhythm
                 if let rhythm = analysis.features.rhythm_classification {
-                    AnalysisRow(
+                    AnalysisRowWithLink(
                         icon: "heart.circle.fill",
                         label: "Rhythm",
                         value: rhythm.capitalized,
-                        color: .blue
+                        color: .blue,
+                        url: URL(string: "https://medschool.co/tests/ecg-basics")!
                     )
                 }
 
                 // Heart Rate
                 if let hrMean = analysis.features.heart_rate_bpm?.mean {
-                    AnalysisRow(
+                    AnalysisRowWithLink(
                         icon: "heart.fill",
                         label: "Mean Heart Rate",
                         value: "\(Int(hrMean)) bpm",
-                        color: .red
+                        color: .red,
+                        url: URL(string: "https://medschool.co/tests/ecg-basics/heart-rate")!
                     )
                 }
 
                 // HRV SDNN
                 if let sdnn = analysis.features.hrv?.sdnn_ms {
-                    AnalysisRow(
+                    AnalysisRowWithLink(
                         icon: "waveform",
                         label: "HRV SDNN",
                         value: String(format: "%.1f ms", sdnn),
-                        color: .green
+                        color: .green,
+                        url: URL(string: "https://medschool.co/tests/ecg-basics")!
                     )
                 }
 
                 // Signal Quality
                 if let quality = analysis.features.signal_quality?.overall_quality {
-                    AnalysisRow(
+                    AnalysisRowWithLink(
                         icon: "checkmark.seal.fill",
                         label: "Signal Quality",
                         value: quality.capitalized,
-                        color: qualityColor(quality)
+                        color: qualityColor(quality),
+                        url: URL(string: "https://medschool.co/tests/ecg-basics")!
                     )
                 }
 
@@ -332,7 +336,7 @@ struct AnalysisCard: View {
     }
 }
 
-// MARK: - Analysis Row
+// MARK: - Analysis Row (Original - kept for compatibility)
 
 struct AnalysisRow: View {
     let icon: String
@@ -355,6 +359,41 @@ struct AnalysisRow: View {
             Text(value)
                 .font(.subheadline)
                 .fontWeight(.semibold)
+        }
+    }
+}
+
+// MARK: - Analysis Row With Link (NEW)
+
+struct AnalysisRowWithLink: View {
+    let icon: String
+    let label: String
+    let value: String
+    let color: Color
+    let url: URL
+
+    var body: some View {
+        Link(destination: url) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(color)
+                    .frame(width: 24)
+
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                Text(value)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Image(systemName: "arrow.up.right.square")
+                    .font(.caption)
+                    .foregroundColor(.blue)
+            }
         }
     }
 }
