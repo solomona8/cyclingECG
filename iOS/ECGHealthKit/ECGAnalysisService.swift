@@ -53,35 +53,20 @@ class ECGAnalysisService: ObservableObject {
             analysisError = nil
         }
 
-        // Try primary backend first
-        if let result = await analyzeECGWithURL(recording, url: baseURL) {
-            return result
-        }
-
-        // If primary failed and we have fallbacks, request user consent
-        if !fallbackURLs.isEmpty {
-            #if DEBUG
-            print("Primary backend failed, requesting fallback consent")
-            #endif
-
-            // Request user consent for fallback
+        // Try primary backend and return result or error (bypassing fallback for debugging)
+        let result = await analyzeECGWithURL(recording, url: baseURL)
+        
+        if result == nil {
             await MainActor.run {
-                pendingRecording = recording
-                fallbackURL = fallbackURLs.first
-                showFallbackConsentAlert = true
-                analysisError = "Primary backend unavailable. Requesting permission to use fallback..."
+                // Show more detailed error if available
+                if analysisError == nil {
+                    analysisError = "Failed to analyze ECG. Check Xcode console for detailed error messages."
+                }
+                isAnalyzing = false
             }
-
-            // Wait for user decision (the UI will call proceedWithFallback or cancelFallback)
-            return nil
         }
-
-        // No fallbacks available
-        await MainActor.run {
-            analysisError = "Backend unavailable and no fallback configured."
-            isAnalyzing = false
-        }
-        return nil
+        
+        return result
     }
 
     /// Called by UI when user grants consent to use fallback backend
@@ -175,6 +160,9 @@ class ECGAnalysisService: ObservableObject {
 
 
         guard let url = URL(string: "\(backendURL)/v1/ecg/analyze") else {
+            await MainActor.run {
+                analysisError = "Invalid URL: \(backendURL)/v1/ecg/analyze"
+            }
             #if DEBUG
             print("ERROR: Invalid URL - \(backendURL)/v1/ecg/analyze")
             #endif
@@ -213,6 +201,9 @@ class ECGAnalysisService: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
+                await MainActor.run {
+                    analysisError = "Invalid response from server"
+                }
                 #if DEBUG
                 print("ERROR: Invalid response from server")
                 #endif
@@ -235,8 +226,11 @@ class ECGAnalysisService: ObservableObject {
             #endif
 
             guard httpResponse.statusCode == 200 else {
-                #if DEBUG
                 let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                await MainActor.run {
+                    analysisError = "Server error (\(httpResponse.statusCode)): \(errorMessage)"
+                }
+                #if DEBUG
                 print("ERROR: Server returned status \(httpResponse.statusCode): \(errorMessage)")
                 #endif
                 return nil
@@ -251,6 +245,9 @@ class ECGAnalysisService: ObservableObject {
                 print("Successfully decoded analysis response")
                 #endif
             } catch {
+                await MainActor.run {
+                    analysisError = "Failed to decode server response: \(error.localizedDescription)"
+                }
                 #if DEBUG
                 print("ERROR: Failed to decode server response: \(error)")
                 if let decodingError = error as? DecodingError {
@@ -281,8 +278,12 @@ class ECGAnalysisService: ObservableObject {
             return analysisResponse
 
         } catch {
+            await MainActor.run {
+                analysisError = "Network error: \(error.localizedDescription)"
+            }
             #if DEBUG
             print("ERROR: Network or unknown error: \(error)")
+            print("Error details: \(error)")
             #endif
             return nil
         }
