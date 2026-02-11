@@ -1,0 +1,18 @@
+App Store Promotional Text
+===========================
+
+Transform Apple Watch ECGs into detailed metrics. QRS/QT intervals, HRV, export to PDF/CSV/JSON. Privacy-focused.
+
+Character count: 118 / 170 (App Store limit)
+
+---
+
+Usage Instructions:
+This promotional text appears above your app description on the App Store for customers with devices running iOS 11 or later, and macOS 10.13 or later. It can be updated without requiring a new app submission.
+
+To use:
+1. Log into App Store Connect
+2. Navigate to your app
+3. Go to App Information
+4. Find the "Promotional Text" field
+5. Paste the text above (without the header or usage instructions)
