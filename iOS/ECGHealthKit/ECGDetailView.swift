@@ -13,7 +13,7 @@ struct ECGDetailView: View {
 
     @EnvironmentObject var analysisService: ECGAnalysisService
     @AppStorage("api_url") private var apiURL = "https://cyclingecg.onrender.com"
-    @AppStorage("api_key") private var apiKey = ""
+    @State private var apiKey = "" // Loaded from Keychain, not UserDefaults
 
     @State private var showingExportSheet = false
     @State private var showingShareSheet = false
@@ -93,6 +93,12 @@ struct ECGDetailView: View {
                 Text("The primary backend is unavailable. Would you like to use a fallback server?")
             }
         }
+        .onAppear {
+            // Load API key from Keychain (secure storage)
+            if let savedKey = KeychainManager.shared.getAPIKey() {
+                apiKey = savedKey
+            }
+        }
     }
 }
 
@@ -163,7 +169,7 @@ struct AnalyzeButton: View {
     @EnvironmentObject var analysisService: ECGAnalysisService
     @EnvironmentObject var historyManager: AnalysisHistoryManager
     @AppStorage("api_url") private var apiURL = "https://cyclingecg.onrender.com"
-    @AppStorage("api_key") private var apiKey = ""
+    @State private var apiKey = "" // Loaded from Keychain, not UserDefaults
 
     var body: some View {
         VStack(spacing: 12) {
@@ -224,6 +230,12 @@ struct AnalyzeButton: View {
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.1), radius: 5)
+        .onAppear {
+            // Load API key from Keychain (secure storage)
+            if let savedKey = KeychainManager.shared.getAPIKey() {
+                apiKey = savedKey
+            }
+        }
     }
 }
 
