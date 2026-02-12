@@ -58,6 +58,8 @@
 Your data is encrypted, stored locally on your device, and never shared without your explicit permission. We do not write or modify any health data.</string>
     <key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
     <string>This app may request access to clinical health records to provide enhanced context for ECG analysis. This is optional and not required for core functionality.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>ECG Insights does NOT write or modify any health data. This app only reads ECG recordings from HealthKit. This permission description is required by Apple for apps with HealthKit capability, even when only reading data.</string>
     <key>UIBackgroundModes</key>
     <array>
         <string>fetch</string>
